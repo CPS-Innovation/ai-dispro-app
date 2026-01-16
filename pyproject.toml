@@ -1,0 +1,24 @@
+# pyproject.toml
+
+[project]
+name = "cps-ai-dispro"
+version = "1.0.0"
+description = "CPS AI Dispro Backend"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests"
+]
+pythonpath = [
+  "src"
+]
+asyncio_mode = "auto"
+markers = [
+    "regression: marks tests as regression tests (deselect with '-m \"not regression\"')"
+    "unit: marks tests as unit tests (deselect with '-m \"not unit\"')"
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')"
+    "asyncio: asyncio mark",
+]
