@@ -215,6 +215,7 @@ class SettingsManager:
                 "POSTGRESQL_PORT": "port",
                 "POSTGRESQL_DATABASE_NAME": "name",
                 "POSTGRESQL_SCHEMA": "schema",
+                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "POSTGRESQL_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
             }
 
@@ -229,8 +230,11 @@ class SettingsManager:
             # CMS settings
             cms_mapping = {
                 "CMS_ENDPOINT": "endpoint",
+                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "CMS_API_KEY_AZURE_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
+                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "CMS_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
+                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "CMS_PASSWORD_AZURE_KEY_VAULT_SECRET_NAME": "password_secret_name",
             }
             for env_key, attr_name in cms_mapping.items():
@@ -249,7 +253,6 @@ class SettingsManager:
             docint_mapping = {
                 "AZURE_DOC_INTELLIGENCE_ENDPOINT": "endpoint",
                 "AZURE_DOC_INTELLIGENCE_API_VERSION": "api_version",
-                "AZURE_DOC_INTELLIGENCE_API_KEY_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
             }
             for env_key, attr_name in docint_mapping.items():
                 if env_key in env_vars:
