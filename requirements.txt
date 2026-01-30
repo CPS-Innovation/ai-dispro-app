@@ -1,0 +1,26 @@
+# Uncomment to enable Azure Monitor OpenTelemetry
+# Ref: aka.ms/functions-azure-monitor-python 
+# azure-monitor-opentelemetry 
+
+python-dotenv
+psycopg2-binary
+SQLAlchemy>=2.0
+pydantic
+Jinja2
+loguru
+
+uvicorn[standard]
+azure-common
+azure-core
+azure-identity[broker]
+azure-keyvault-secrets
+azure-functions
+azure-storage-blob
+azure-data-tables
+azure-ai-documentintelligence==1.0.0b4
+azure-ai-inference
+openai
+
+pytest-cov
+pytest
+pytest-asyncio
