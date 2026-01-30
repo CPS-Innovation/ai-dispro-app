@@ -1,11 +1,4 @@
-"""Settings manager with runtime configuration support.
-
-This module provides a centralized settings broker that can:
-- Load from environment variables
-- Be modified at runtime
-- Validate settings
-- Support different environments (dev, test, prod)
-"""
+"""Settings manager with runtime configuration support."""
 
 import os
 from dataclasses import asdict, dataclass
@@ -36,12 +29,8 @@ class Settings:
 class ApplicationSettings(Settings):
     """Application-level settings."""
 
-    name: str = "ai-dispro"
-    version: str = "test"
     environment: Environment = Environment.DEVELOPMENT
-    debug: bool = True
-    log_level: str = "DEBUG"
-
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         data = super().to_dict()
@@ -61,11 +50,13 @@ class StorageSettings(Settings):
     table_name_experiments: str = "experiments"
     table_name_sections: str = "sections"
     table_name_analysisjobs: str = "analysisjobs"
-    table_name_analysisjobresults: str = "analysisjobresults"
+    table_name_analysisresults: str = "analysisresults"
     table_name_prompt_templates: str = "prompt_templates"
     table_name_events: str = "events"
-    blob_container_name_source: str = "corpus"
+    blob_container_name_source: str = "source"
     blob_container_name_processed: str = "processed"
+    blob_container_name_section: str = "section"
+
 
 @dataclass
 class DatabaseSettings(Settings):
@@ -74,8 +65,8 @@ class DatabaseSettings(Settings):
     host: str = "********"
     port: int = 5432
     name: str = "********"
+    schema: str = "public"
     username_secret_name: str = "********"
-    password_secret_name: str = "********"
     pool_size: int = 10
     max_overflow: int = 20
     echo: bool = False
@@ -116,11 +107,9 @@ class AzureAIFoundrySettings(Settings):
 
 @dataclass
 class AzureSettings(Settings):
-    """Azure service settings for Storage, Key Vault, and Application Insights."""
+    """Azure service settings."""
 
     key_vault_url: str = ""
-    application_insights_key: str = ""
-
 
 @dataclass
 class TestSettings(Settings):
@@ -130,28 +119,11 @@ class TestSettings(Settings):
     cms_case_id: str = ""
     blob_name: str = ""
     filepath: str = ""
+    section_content: str = ""
 
 
 class SettingsManager:
-    """Centralized settings manager with runtime configuration support.
-
-    Features:
-    - Singleton pattern for global access
-    - Thread-safe operations
-    - Runtime configuration changes
-    - Environment variable loading
-    - Validation
-
-    Usage:
-        # Get instance
-        settings = SettingsManager.get_instance()
-
-        # Access settings
-        db_host = settings.database.host
-
-        # Update at runtime
-        settings.update_database(host="newhost", port=5433)
-    """
+    """Centralized settings manager with runtime configuration support."""
 
     _instance: Optional["SettingsManager"] = None
     _lock: Lock = Lock()
@@ -175,13 +147,11 @@ class SettingsManager:
     @classmethod
     def get_instance(cls) -> "SettingsManager":
         """Get or create the singleton instance using double-checked locking pattern.
+
         The double-checked locking pattern is used here for thread-safe lazy initialization:
         - First `if` check: Avoids acquiring the lock on every call (performance optimization)
         - Second `if` check: Ensures instance creation happens only once, even if multiple 
             threads pass the first check before one acquires the lock (thread-safety guarantee)
-
-        Returns:
-            SettingsManager instance
         """
         if cls._instance is None:
             with cls._lock:
@@ -196,27 +166,17 @@ class SettingsManager:
         with cls._lock:
             cls._instance = None
 
-    def load_from_env(self, prefix: str = "") -> None:
-        """Load settings from environment variables.
-
-        Args:
-            prefix: Optional prefix for environment variables (e.g., "CPSAI_")
-        """
+    def load_from_env(self) -> None:
+        """Load settings from environment variables."""
         with self._change_lock:
 
             env_vars = os.environ
 
-            logger.info(
-                "Loading settings from environment variables" + (f" with prefix={prefix}" if prefix else "")
-            )
+            logger.info("Loading settings from environment variables")
 
             # Application settings
             app_mapping = {
-                f"{prefix}APP_NAME": "name",
-                f"{prefix}APP_VERSION": "version",
-                f"{prefix}APP_ENVIRONMENT": "environment",
-                f"{prefix}APP_DEBUG": "debug",
-                f"{prefix}APP_LOG_LEVEL": "log_level",
+                "APP_ENVIRONMENT": "environment",
             }
 
             for env_key, attr_name in app_mapping.items():
@@ -224,25 +184,24 @@ class SettingsManager:
                     value = env_vars[env_key]
                     if attr_name == "environment":
                         value = Environment(value.lower())
-                    elif attr_name == "debug":
-                        value = value.lower() in ["true", "1", "yes"]
                     setattr(self.application, attr_name, value)
 
             # Storage settings
             storage_mapping = {
-                f"{prefix}TABLE_NAME_CASES": "table_name_cases",
-                f"{prefix}TABLE_NAME_DEFENDANTS": "table_name_defendants",
-                f"{prefix}TABLE_NAME_CHARGES": "table_name_charges",
-                f"{prefix}TABLE_NAME_DOCUMENTS": "table_name_documents",
-                f"{prefix}TABLE_NAME_VERSIONS": "table_name_versions",
-                f"{prefix}TABLE_NAME_EXPERIMENTS": "table_name_experiments",
-                f"{prefix}TABLE_NAME_SECTIONS": "table_name_sections",
-                f"{prefix}TABLE_NAME_ANALYSISJOBS": "table_name_analysisjobs",
-                f"{prefix}TABLE_NAME_ANALYSISJOBRESULTS": "table_name_analysisjobresults",
-                f"{prefix}TABLE_NAME_PROMPT_TEMPLATES": "table_name_prompt_templates",
-                f"{prefix}TABLE_NAME_EVENTS": "table_name_events",
-                f"{prefix}BLOB_CONTAINER_NAME_SOURCE": "blob_container_name_source",
-                f"{prefix}BLOB_CONTAINER_NAME_PROCESSED": "blob_container_name_processed",
+                "TABLE_NAME_CASES": "table_name_cases",
+                "TABLE_NAME_DEFENDANTS": "table_name_defendants",
+                "TABLE_NAME_CHARGES": "table_name_charges",
+                "TABLE_NAME_DOCUMENTS": "table_name_documents",
+                "TABLE_NAME_VERSIONS": "table_name_versions",
+                "TABLE_NAME_EXPERIMENTS": "table_name_experiments",
+                "TABLE_NAME_SECTIONS": "table_name_sections",
+                "TABLE_NAME_ANALYSISJOBS": "table_name_analysisjobs",
+                "TABLE_NAME_ANALYSISRESULTS": "table_name_analysisresults",
+                "TABLE_NAME_PROMPT_TEMPLATES": "table_name_prompt_templates",
+                "TABLE_NAME_EVENTS": "table_name_events",
+                "BLOB_CONTAINER_NAME_SOURCE": "blob_container_name_source",
+                "BLOB_CONTAINER_NAME_PROCESSED": "blob_container_name_processed",
+                "BLOB_CONTAINER_NAME_SECTION": "blob_container_name_section",
             }
 
             for env_key, attr_name in storage_mapping.items():
@@ -252,32 +211,27 @@ class SettingsManager:
 
             # Database settings
             db_mapping = {
-                f"{prefix}POSTGRESQL_HOST": "host",
-                f"{prefix}POSTGRESQL_PORT": "port",
-                f"{prefix}POSTGRESQL_DATABASE_NAME": "name",
-                f"{prefix}POSTGRESQL_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
-                f"{prefix}POSTGRESQL_PASSWORD_AZURE_KEY_VAULT_SECRET_NAME": "password_secret_name",
-                f"{prefix}POSTGRESQL_POOL_SIZE": "pool_size",
-                f"{prefix}POSTGRESQL_MAX_OVERFLOW": "max_overflow",
-                f"{prefix}POSTGRESQL_ECHO": "echo",
+                "POSTGRESQL_HOST": "host",
+                "POSTGRESQL_PORT": "port",
+                "POSTGRESQL_DATABASE_NAME": "name",
+                "POSTGRESQL_SCHEMA": "schema",
+                "POSTGRESQL_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
             }
 
             for env_key, attr_name in db_mapping.items():
                 if env_key in os.environ:
                     value = os.environ[env_key]
                     # Type conversion
-                    if attr_name in ["port", "pool_size", "max_overflow"]:
+                    if attr_name == "port":
                         value = int(value)
-                    elif attr_name == "echo":
-                        value = value.lower() in ["true", "1", "yes"]
                     setattr(self.database, attr_name, value)
             
             # CMS settings
             cms_mapping = {
-                f"{prefix}CMS_ENDPOINT": "endpoint",
-                f"{prefix}CMS_API_KEY_AZURE_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
-                f"{prefix}CMS_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
-                f"{prefix}CMS_PASSWORD_AZURE_KEY_VAULT_SECRET_NAME": "password_secret_name",
+                "CMS_ENDPOINT": "endpoint",
+                "CMS_API_KEY_AZURE_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
+                "CMS_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
+                "CMS_PASSWORD_AZURE_KEY_VAULT_SECRET_NAME": "password_secret_name",
             }
             for env_key, attr_name in cms_mapping.items():
                 if env_key in env_vars:
@@ -285,7 +239,7 @@ class SettingsManager:
             
             # Azure Blob Storage settings
             blob_mapping = {
-                f"{prefix}AZURE_BLOB_ACCOUNT_NAME": "account_name",
+                "AZURE_BLOB_ACCOUNT_NAME": "account_name",
             }
             for env_key, attr_name in blob_mapping.items():
                 if env_key in env_vars:
@@ -293,9 +247,9 @@ class SettingsManager:
             
             # Azure Document Intelligence settings
             docint_mapping = {
-                f"{prefix}AZURE_DOC_INTELLIGENCE_ENDPOINT": "endpoint",
-                f"{prefix}AZURE_DOC_INTELLIGENCE_API_VERSION": "api_version",
-                f"{prefix}AZURE_DOC_INTELLIGENCE_API_KEY_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
+                "AZURE_DOC_INTELLIGENCE_ENDPOINT": "endpoint",
+                "AZURE_DOC_INTELLIGENCE_API_VERSION": "api_version",
+                "AZURE_DOC_INTELLIGENCE_API_KEY_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
             }
             for env_key, attr_name in docint_mapping.items():
                 if env_key in env_vars:
@@ -303,9 +257,9 @@ class SettingsManager:
 
             # Azure AI Foundry settings
             aif_mapping = {
-                f"{prefix}AZURE_AI_FOUNDRY_ENDPOINT": "endpoint",
-                f"{prefix}AZURE_AI_FOUNDRY_API_VERSION": "api_version",
-                f"{prefix}AZURE_AI_FOUNDRY_DEPLOYMENT_NAME": "deployment_name",
+                "AZURE_AI_FOUNDRY_ENDPOINT": "endpoint",
+                "AZURE_AI_FOUNDRY_API_VERSION": "api_version",
+                "AZURE_AI_FOUNDRY_DEPLOYMENT_NAME": "deployment_name",
             }
             for env_key, attr_name in aif_mapping.items():
                 if env_key in env_vars:
@@ -313,8 +267,7 @@ class SettingsManager:
 
             # Azure settings
             azure_mapping = {
-                f"{prefix}AZURE_KEY_VAULT_URL": "key_vault_url",
-                f"{prefix}AZURE_APPINSIGHTS_KEY": "application_insights_key",
+                "AZURE_KEY_VAULT_URL": "key_vault_url",
             }
 
             for env_key, attr_name in azure_mapping.items():
@@ -323,10 +276,11 @@ class SettingsManager:
 
             # Test settings
             test_mapping = {
-                f"{prefix}TEST_CMS_URN": "cms_urn",
-                f"{prefix}TEST_CMS_CASE_ID": "cms_case_id",
-                f"{prefix}TEST_BLOB_NAME": "blob_name",
-                f"{prefix}TEST_FILEPATH": "filepath",
+                "TEST_CMS_URN": "cms_urn",
+                "TEST_CMS_CASE_ID": "cms_case_id",
+                "TEST_BLOB_NAME": "blob_name",
+                "TEST_FILEPATH": "filepath",
+                "TEST_SECTION_CONTENT": "section_content",
             }
 
             for env_key, attr_name in test_mapping.items():
@@ -340,9 +294,6 @@ class SettingsManager:
 
         Args:
             mask_secrets: If True, mask sensitive values like passwords and keys
-
-        Returns:
-            Dictionary containing all settings
         """
         settings = {
             "application": self.application.to_dict(),
@@ -358,12 +309,11 @@ class SettingsManager:
         if mask_secrets:
             # Mask sensitive fields
             sensitive_fields = [
-                ("database", "password_secret_name"),
+                ("database", "username_secret_name"),
                 ("cms", "api_key_secret_name"),
                 ("cms", "username_secret_name"),
                 ("cms", "password_secret_name"),
                 ("doc_intelligence", "api_key_secret_name"),
-                ("azure", "application_insights_key"),
             ]
             for section, field in sensitive_fields:
                 if settings[section] and settings[section][field]:
@@ -389,16 +339,7 @@ class SettingsManager:
         }
 
         # Application validation
-        if not self.application.name:
-            errors["application"].append("Application name is required")
-        if self.application.log_level not in [
-            "DEBUG",
-            "INFO",
-            "WARNING",
-            "ERROR",
-            "CRITICAL",
-        ]:
-            errors["application"].append("Invalid log level")
+        ...
 
         # Database validation
         if not self.database.host:
@@ -407,6 +348,8 @@ class SettingsManager:
             errors["database"].append("Database port must be between 1 and 65535")
         if not self.database.name:
             errors["database"].append("Database name is required")
+        if not self.database.schema:
+            errors["database"].append("Database schema is required")
 
         # Remove empty error lists
         errors = {k: v for k, v in errors.items() if v}
@@ -425,11 +368,8 @@ class SettingsManager:
         """Check if current environment is production."""
         return self.application.environment == Environment.PRODUCTION
 
+
 # Convenience function for global access
 def get_settings() -> SettingsManager:
-    """Get the global settings manager instance.
-
-    Returns:
-        SettingsManager singleton instance
-    """
+    """Get the global settings manager instance."""
     return SettingsManager.get_instance()
