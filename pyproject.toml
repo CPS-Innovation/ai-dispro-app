@@ -17,8 +17,8 @@ pythonpath = [
 ]
 asyncio_mode = "auto"
 markers = [
-    "regression: marks tests as regression tests (deselect with '-m \"not regression\"')"
-    "unit: marks tests as unit tests (deselect with '-m \"not unit\"')"
-    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')"
+    "regression: marks tests as regression tests (deselect with '-m \"not regression\"')",
+    "unit: marks tests as unit tests (deselect with '-m \"not unit\"')",
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
     "asyncio: asyncio mark",
 ]

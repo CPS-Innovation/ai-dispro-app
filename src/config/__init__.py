@@ -1,12 +1,3 @@
-"""Configuration management with runtime settings broker.
-
-Responsibilities:
-- Singleton settings manager for global configuration access
-- Runtime configuration updates with observer notifications
-- Settings loading from environment variables
-- Thread-safe configuration management
-"""
-
 from .settings_manager import (
     ApplicationSettings,
     StorageSettings,
