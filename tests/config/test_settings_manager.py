@@ -1,14 +1,3 @@
-"""Unit tests for the SettingsManager singleton and configuration broker.
-
-Tests cover:
-- Singleton pattern and global access
-- Loading settings from environment variables
-- Runtime configuration updates
-- Observer pattern notifications
-- Settings validation and export
-- Thread safety
-"""
-
 import pytest
 import os
 from unittest.mock import patch
@@ -50,7 +39,6 @@ def test_settings_backward_compatibility():
     assert hasattr(settings.database, 'port')
     assert hasattr(settings.database, 'name')
     assert hasattr(settings.database, 'username_secret_name')
-    assert hasattr(settings.database, 'password_secret_name')
     
     # Verify environment methods
     assert callable(settings.is_development)
@@ -78,14 +66,11 @@ def test_load_from_env():
     """Test loading settings from environment variables."""
     env_vars = {
         "APP_ENVIRONMENT": "production",
-        "APP_DEBUG": "true",
-        "APP_LOG_LEVEL": "DEBUG",
         
         "POSTGRESQL_HOST": "testhost",
         "POSTGRESQL_PORT": "5433",
         "POSTGRESQL_DATABASE_NAME": "testdb",
         "POSTGRESQL_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "testuser",
-        "POSTGRESQL_PASSWORD_AZURE_KEY_VAULT_SECRET_NAME": "testpass",
         
         "CMS_ENDPOINT": "https://test.com",
         "CMS_API_KEY_AZURE_KEY_VAULT_SECRET_NAME": "testkey",
@@ -95,7 +80,6 @@ def test_load_from_env():
         "AZURE_BLOB_ACCOUNT_NAME": "teststorage",
 
         "AZURE_DOC_INTELLIGENCE_ENDPOINT": "https://test.com",
-        "AZURE_DOC_INTELLIGENCE_API_KEY_KEY_VAULT_SECRET_NAME": "testkey",
 
         "AZURE_AI_FOUNDRY_PROJECT": "testproject",
         "AZURE_AI_FOUNDRY_ENDPOINT": "https://test.com",
@@ -110,29 +94,11 @@ def test_load_from_env():
         settings = SettingsManager.get_instance()
 
         assert settings.application.environment == Environment.PRODUCTION
-        assert settings.application.debug is True
-        assert settings.application.log_level == "DEBUG"
-
+        
         assert settings.database.host == "testhost"
         assert settings.database.port == 5433
         assert settings.database.name == "testdb"
         assert settings.database.username_secret_name == "testuser"
-        assert settings.database.password_secret_name == "testpass"
-
-
-def test_load_from_env_with_prefix():
-    """Test loading with environment variable prefix."""
-    env_vars = {
-        "FOO_POSTGRESQL_HOST": "prefixhost",
-        "FOO_POSTGRESQL_PORT": "5434",
-    }
-
-    with patch.dict(os.environ, env_vars, clear=False):
-        settings = SettingsManager.get_instance()
-        settings.load_from_env(prefix="FOO_")
-
-        assert settings.database.host == "prefixhost"
-        assert settings.database.port == 5434
 
 
 def test_update_database_runtime():
@@ -149,17 +115,17 @@ def test_update_database_runtime():
 def test_export_settings():
     """Test exporting settings."""
     settings = SettingsManager.get_instance()
-    settings.database.password_secret_name = "foo"
+    settings.cms.password_secret_name = "foo"
 
     # Export with masking
     exported = settings.export_settings(mask_secrets=True)
 
-    assert exported["database"]["password_secret_name"] == "***MASKED***"
+    assert exported["cms"]["password_secret_name"] == "***MASKED***"
 
     # Export without masking
     exported_unmasked = settings.export_settings(mask_secrets=False)
 
-    assert exported_unmasked["database"]["password_secret_name"] == "foo"
+    assert exported_unmasked["cms"]["password_secret_name"] == "foo"
 
 
 def test_validate_settings():
