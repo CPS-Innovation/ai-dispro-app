@@ -220,7 +220,7 @@ class CMSClient:
             logger.error(f"Failed to list documents: {e}")
             return None
 
-    def download_data(self, case_id: int, document_id: int, version_id: int) -> bytes:
+    def download_data(self, case_id: int, document_id: int, version_id: int) -> requests.Response:
         """Download a document directly from the API."""
         url = f"{self.base_url}/cases/{case_id}/documents/{document_id}/versions/{version_id}"
         headers = self._get_headers()
