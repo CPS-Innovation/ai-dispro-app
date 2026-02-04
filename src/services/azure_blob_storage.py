@@ -35,7 +35,7 @@ def load_blob(container_name: str, blob_name: str) -> bytes:
     return content
 
 
-async def save_blob(
+def save_blob(
         container_name: str,
         blob_name: str,
         data: bytes,
