@@ -54,8 +54,9 @@ class SessionManager:
             self,
             object_name: str,
             grantee: str,
+            operations: list[str],
             object_type: Literal["TABLE", "SEQUENCE"] = "TABLE",
-            operations: list[str] | None = None):
+     ) -> None:
         """Grant access to a specific table for a given role or user."""
         sttmnt = f"GRANT {', '.join(operations)} ON {object_type} {object_name} TO {grantee};"
         with self.get_session() as session:

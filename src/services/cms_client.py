@@ -27,11 +27,11 @@ class CMSClient:
         # Log the configuration
         logger.info(f"CMS base url: {self.base_url}")
         logger.info("CMS function key length: {}", len(self.function_key))
-        logger.info("CMS username: {}", self.username)
+        logger.info("CMS username length: {}", len(self.username))
         logger.info("CMS password length: {}", len(self.password))
 
 
-    async def authenticate(self) -> bool:
+    def authenticate(self) -> bool:
         """Authenticate with the API and store auth values.
 
         Returns:
@@ -65,7 +65,7 @@ class CMSClient:
             return False
 
 
-    async def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> Dict[str, str]:
         """Get headers with authentication."""
         if not self.cms_auth_values:
             raise ValueError("Not authenticated. Call authenticate() first.")
@@ -76,11 +76,11 @@ class CMSClient:
             "Content-Type": "application/json",
         }
 
-    async def get_urn_from_case_id(self, case_id: int) -> str | None:
+    def get_urn_from_case_id(self, case_id: int) -> str | None:
         """Get URN from case ID."""
 
         url = f"{self.base_url}/cases/{case_id}/summary"
-        headers = await self._get_headers()
+        headers = self._get_headers()
 
         try:
             response = requests.get(url, headers=headers)
@@ -101,10 +101,10 @@ class CMSClient:
             logger.warning(f"Failed to get URN: {e}")
             return None
 
-    async def get_case_id_from_urn(self, urn: str) -> int | None:
+    def get_case_id_from_urn(self, urn: str) -> int | None:
         """Get case ID from URN."""
         url = f"{self.base_url}/urns/{urn}/case-identifiers"
-        headers = await self._get_headers()
+        headers = self._get_headers()
 
         try:
             response = requests.get(url, headers=headers)
@@ -128,10 +128,10 @@ class CMSClient:
             logger.warning(f"Failed to get case ID: {e}")
             return None
 
-    async def get_case_summary(self, case_id: int) -> dict | None:
+    def get_case_summary(self, case_id: int) -> dict | None:
         """Check if a case is finalised."""
         url = f"{self.base_url}/cases/{case_id}/summary"
-        headers = await self._get_headers()
+        headers = self._get_headers()
         keys = ["urn", "finalised", "areaId", "unitId", "registrationDate"]
 
         try:
@@ -149,7 +149,7 @@ class CMSClient:
             logger.warning(f"Failed to get case finalised status: {e}")
             return None
     
-    async def get_case_defendants(
+    def get_case_defendants(
             self,
             case_id: int,
             include_charges: bool = True,
@@ -157,7 +157,7 @@ class CMSClient:
         """Get defendants for a case ID."""
 
         url = f"{self.base_url}/cases/{case_id}/defendants"
-        headers = await self._get_headers()
+        headers = self._get_headers()
         
         try:
             response = requests.get(url, headers=headers)
@@ -202,10 +202,10 @@ class CMSClient:
             logger.warning(f"Failed to get metadata: {e}")
             return None
 
-    async def list_case_documents(self, case_id: int) -> list | None:
+    def list_case_documents(self, case_id: int) -> list | None:
         """List all documents for a case."""
         url = f"{self.base_url}/cases/{case_id}/documents/cwa"
-        headers = await self._get_headers()
+        headers = self._get_headers()
 
         try:
             response = requests.get(url, headers=headers)
@@ -220,93 +220,11 @@ class CMSClient:
             logger.error(f"Failed to list documents: {e}")
             return None
 
-
-    async def upload_document(
-            self,
-            case_id: int,
-            document_type: int,
-            content_type: str,
-            file_name: str,
-            file_content: bytes,
-            file_subject: str,
-            file_description: str,
-        ) -> bool:
-        """Upload a document directly via the API."""
-        url = f"{self.base_url}/cases/{case_id}/document/{document_type}"
-        headers = await self._get_headers()
-        payload = {
-            "documentType": "Mg3",
-            "caseId": case_id,
-            "contentType": content_type,
-            "fileName": file_name,
-            "fileContent": file_content,
-            "fileSubject": file_subject,
-            "fileDescription": file_description,
-        }
-
-        try:
-            response = requests.post(url, data=payload, headers=headers)
-            response.raise_for_status()
-
-            logger.info(f"Document uploaded (Type: {document_type})")
-            return True
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to upload document: {e}")
-            return False
-
-
-    async def download_data(self, case_id: int, document_id: int, version_id: int) -> bytes:
+    def download_data(self, case_id: int, document_id: int, version_id: int) -> bytes:
         """Download a document directly from the API."""
         url = f"{self.base_url}/cases/{case_id}/documents/{document_id}/versions/{version_id}"
-        headers = await self._get_headers()
+        headers = self._get_headers()
 
         response = requests.get(url, headers=headers, stream=True)
         response.raise_for_status()
         return response
-
-    async def download_document(self, case_id: int, document_id: int, version_id: int, output_filename: str | None = None) -> bool:
-        """Download a document directly from the API.
-
-        Args:
-            case_id: The case ID
-            document_id: The document ID
-            version_id: The version ID
-            output_filename: Path to save the downloaded file (optional, will use Content-Disposition if not provided)
-
-        Returns:
-            bool: True if successful, False otherwise
-
-        """
-        url = f"{self.base_url}/cases/{case_id}/documents/{document_id}/versions/{version_id}"
-        headers = await self._get_headers()
-
-        try:
-            response = requests.get(url, headers=headers, stream=True)
-            response.raise_for_status()
-
-            # If no filename provided, try to get it from Content-Disposition header
-            if not output_filename:
-                content_disp = response.headers.get("Content-Disposition", "")
-                if "filename=" in content_disp:
-                    parts = content_disp.split("filename=")
-                    if len(parts) > 1:
-                        filename = parts[1].split(";")[0].strip('"\'')
-                        output_filename = filename
-                    else:
-                        output_filename = f"document_{document_id}.pdf"
-                else:
-                    output_filename = f"document_{document_id}.pdf"
-
-            # Write the file
-            with open(output_filename, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-
-            content_type = response.headers.get("Content-Type", "unknown")
-            logger.info(f"Document downloaded to: {output_filename} (Type: {content_type})")
-            return True
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to download document: {e}")
-            return False
