@@ -47,7 +47,13 @@ class SessionManager:
     def truncate_table(self, table_name: str):
         """Truncate a specific table in the database."""
         with self.get_session() as session:
-            session.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE;")
+            if table_name not in Base.metadata.tables:
+                raise ValueError(f"Unknown or unauthorized table name: {table_name!r}")
+            quoted_table_name = self._engine.dialect.identifier_preparer.quote(table_name)
+            sttmt = "TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE;".format(
+                table_name=quoted_table_name
+            )
+            session.execute(text(sttmt))
             session.commit()
 
     def grant_access(
@@ -58,7 +64,13 @@ class SessionManager:
             object_type: Literal["TABLE", "SEQUENCE"] = "TABLE",
      ) -> None:
         """Grant access to a specific table for a given role or user."""
-        sttmnt = f"GRANT {', '.join(operations)} ON {object_type} {object_name} TO {grantee};"
+        operations = ', '.join(operations)
+        sttmnt = "GRANT {operations} ON {object_type} {object_name} TO {grantee};".format_map({
+            "operations": operations,
+            "object_type": object_type,
+            "object_name": object_name,
+            "grantee": grantee,
+        })
         with self.get_session() as session:
             session.execute(text(sttmnt))
             session.commit()

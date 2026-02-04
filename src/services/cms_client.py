@@ -50,7 +50,12 @@ class CMSClient:
         }
 
         try:
-            response = requests.post(url, data=payload, headers=headers)
+            response = requests.post(
+                url,
+                data=payload,
+                headers=headers,
+                timeout=30,
+            )
             response.raise_for_status()
 
             auth_data = response.json()
@@ -94,7 +99,6 @@ class CMSClient:
                 logger.info(f"Found URN: {urn}")
                 return urn
             logger.warning("No URN found in response")
-            logger.warning(f"Response data: {data}")
             return None
 
         except requests.exceptions.RequestException as e:
@@ -121,7 +125,6 @@ class CMSClient:
                 logger.info(f"Found case ID: {case_id}")
                 return case_id
             logger.warning("No case ID found in response")
-            logger.warning(f"Response data: {data}")
             return None
 
         except requests.exceptions.RequestException as e:
@@ -129,7 +132,7 @@ class CMSClient:
             return None
 
     def get_case_summary(self, case_id: int) -> dict | None:
-        """Check if a case is finalised."""
+        """Get case summary information for a given case ID."""
         url = f"{self.base_url}/cases/{case_id}/summary"
         headers = self._get_headers()
         keys = ["urn", "finalised", "areaId", "unitId", "registrationDate"]
@@ -139,10 +142,7 @@ class CMSClient:
             response.raise_for_status()
 
             data = response.json()
-
             response_data = {key: data.get(key, None) for key in keys}
-
-            logger.warning(f"Response data: {response_data}")
             return response_data
 
         except requests.exceptions.RequestException as e:
@@ -194,8 +194,7 @@ class CMSClient:
                     ans.append(defendant_data)
                 logger.info(f"Found metadata for case ID: {case_id}")
                 return ans
-            logger.warning("No metadata found in response")
-            logger.warning(f"Response data: {defendants}")
+            logger.warning("No defendants found in response")
             return None
 
         except requests.exceptions.RequestException as e:
