@@ -1,10 +1,9 @@
-"""Settings manager with runtime configuration support."""
-
+from typing import Optional
 import os
 from dataclasses import asdict, dataclass
 from enum import Enum
 from threading import Lock
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -21,7 +20,7 @@ class Environment(str, Enum):
 class Settings:
     """Base class for settings dataclasses."""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert settings to dictionary."""
         return asdict(self)
 
@@ -29,9 +28,11 @@ class Settings:
 class ApplicationSettings(Settings):
     """Application-level settings."""
 
+    name: str = "ai-dispro"
+    version: str = "test"
     environment: Environment = Environment.DEVELOPMENT
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         data = super().to_dict()
         data["environment"] = self.environment.value  # Convert Enum to string
@@ -53,9 +54,9 @@ class StorageSettings(Settings):
     table_name_analysisresults: str = "analysisresults"
     table_name_prompt_templates: str = "prompt_templates"
     table_name_events: str = "events"
-    blob_container_name_source: str = "source"
+    blob_container_name_source: str = "corpus"
     blob_container_name_processed: str = "processed"
-    blob_container_name_section: str = "section"
+    blob_container_name_section: str = "processed"
 
 
 @dataclass
@@ -65,8 +66,8 @@ class DatabaseSettings(Settings):
     host: str = "********"
     port: int = 5432
     name: str = "********"
-    schema: str = "public"
-    username_secret_name: str = "********"
+    schema: str = "********"
+    username: str = "********"
     pool_size: int = 10
     max_overflow: int = 20
     echo: bool = False
@@ -93,7 +94,6 @@ class AzureDocIntelligenceSettings(Settings):
 
     endpoint: str = "********"
     api_version: str = "2024-11-30"
-    api_key_secret_name: str = "********"
 
 
 @dataclass
@@ -107,9 +107,10 @@ class AzureAIFoundrySettings(Settings):
 
 @dataclass
 class AzureSettings(Settings):
-    """Azure service settings."""
+    """Azure service settings for Storage, Key Vault, and Application Insights."""
 
     key_vault_url: str = ""
+
 
 @dataclass
 class TestSettings(Settings):
@@ -120,6 +121,10 @@ class TestSettings(Settings):
     blob_name: str = ""
     filepath: str = ""
     section_content: str = ""
+    experiment_id: str = ""
+    section_id: str = ""
+    theme: str = ""
+    pattern: str = ""
 
 
 class SettingsManager:
@@ -147,11 +152,13 @@ class SettingsManager:
     @classmethod
     def get_instance(cls) -> "SettingsManager":
         """Get or create the singleton instance using double-checked locking pattern.
-
         The double-checked locking pattern is used here for thread-safe lazy initialization:
         - First `if` check: Avoids acquiring the lock on every call (performance optimization)
         - Second `if` check: Ensures instance creation happens only once, even if multiple 
             threads pass the first check before one acquires the lock (thread-safety guarantee)
+
+        Returns:
+            SettingsManager instance
         """
         if cls._instance is None:
             with cls._lock:
@@ -215,8 +222,7 @@ class SettingsManager:
                 "POSTGRESQL_PORT": "port",
                 "POSTGRESQL_DATABASE_NAME": "name",
                 "POSTGRESQL_SCHEMA": "schema",
-                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
-                "POSTGRESQL_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
+                "POSTGRESQL_USERNAME": "username",
             }
 
             for env_key, attr_name in db_mapping.items():
@@ -230,11 +236,8 @@ class SettingsManager:
             # CMS settings
             cms_mapping = {
                 "CMS_ENDPOINT": "endpoint",
-                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "CMS_API_KEY_AZURE_KEY_VAULT_SECRET_NAME": "api_key_secret_name",
-                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "CMS_USERNAME_AZURE_KEY_VAULT_SECRET_NAME": "username_secret_name",
-                # nosec: B105 - This stores the Key Vault secret name, not the actual credential
                 "CMS_PASSWORD_AZURE_KEY_VAULT_SECRET_NAME": "password_secret_name",
             }
             for env_key, attr_name in cms_mapping.items():
@@ -284,6 +287,10 @@ class SettingsManager:
                 "TEST_BLOB_NAME": "blob_name",
                 "TEST_FILEPATH": "filepath",
                 "TEST_SECTION_CONTENT": "section_content",
+                "TEST_EXPERIMENT_ID": "experiment_id",
+                "TEST_SECTION_ID": "section_id",
+                "TEST_THEME": "theme",
+                "TEST_PATTERN": "pattern",
             }
 
             for env_key, attr_name in test_mapping.items():
@@ -292,7 +299,7 @@ class SettingsManager:
 
             logger.info("Settings successfully loaded from environment")
 
-    def export_settings(self, mask_secrets: bool = True) -> Dict[str, Any]:
+    def export_settings(self, mask_secrets: bool = True) -> dict[str, Any]:
         """Export all settings as a dictionary.
 
         Args:
@@ -307,16 +314,15 @@ class SettingsManager:
             "doc_intelligence": self.doc_intelligence.to_dict(),
             "ai_foundry": self.ai_foundry.to_dict(),
             "azure": self.azure.to_dict(),
+            "test": self.test.to_dict(),
         }
 
         if mask_secrets:
             # Mask sensitive fields
             sensitive_fields = [
-                ("database", "username_secret_name"),
                 ("cms", "api_key_secret_name"),
                 ("cms", "username_secret_name"),
                 ("cms", "password_secret_name"),
-                ("doc_intelligence", "api_key_secret_name"),
             ]
             for section, field in sensitive_fields:
                 if settings[section] and settings[section][field]:
@@ -324,13 +330,13 @@ class SettingsManager:
 
         return settings
 
-    def validate(self) -> Dict[str, List[str]]:
+    def validate(self) -> dict[str, list[str]]:
         """Validate current settings.
 
         Returns:
             Dictionary with validation errors by category
         """
-        errors: Dict[str, List[str]] = {
+        errors: dict[str, list[str]] = {
             "application": [],
             "storage": [],
             "database": [],
@@ -339,6 +345,7 @@ class SettingsManager:
             "doc_intelligence": [],
             "ai_foundry": [],
             "azure": [],
+            "test": [],
         }
 
         # Application validation
@@ -370,9 +377,3 @@ class SettingsManager:
     def is_production(self) -> bool:
         """Check if current environment is production."""
         return self.application.environment == Environment.PRODUCTION
-
-
-# Convenience function for global access
-def get_settings() -> SettingsManager:
-    """Get the global settings manager instance."""
-    return SettingsManager.get_instance()
