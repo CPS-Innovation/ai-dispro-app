@@ -45,4 +45,4 @@ class Version(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Version(id='{self.id}', document_id='{self.document_id}'>"
+        return f"<Version(id='{self.id}', document_id='{self.document_id}')>"

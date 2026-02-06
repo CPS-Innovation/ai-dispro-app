@@ -11,7 +11,7 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
     def __init__(self, session: Session):
         super().__init__(PromptTemplate, session)
 
-    def get_by_id(self, id: str) -> PromptTemplate | None:
+    def get_by_id(self, id: int) -> PromptTemplate | None:
         """Get prompt template by ID."""
         return self.get_one_by(id=id)
     

@@ -5,6 +5,7 @@ import pytest
 from src.config import SettingsManager
 from src.services import get_docintel_client
 
+@pytest.mark.skip(reason="Requires a local file")
 @pytest.mark.integration
 def test_begin_analyze_document():
     settings = SettingsManager.get_instance()
