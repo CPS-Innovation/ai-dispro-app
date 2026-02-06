@@ -7,9 +7,9 @@ from .settings_manager import (
     AzureDocIntelligenceSettings,
     AzureAIFoundrySettings,
     AzureSettings,
+    TestSettings,
     Environment,
     SettingsManager,
-    get_settings,
 )
 
 __all__ = [
@@ -22,6 +22,6 @@ __all__ = [
     "AzureDocIntelligenceSettings",
     "AzureAIFoundrySettings",
     "AzureSettings",
+    "TestSettings",
     "Environment",
-    "get_settings",
 ]
