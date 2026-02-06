@@ -78,9 +78,9 @@ class BaseRepository(Generic[ModelType]):
 
     def upsert(self, **kwargs) -> ModelType:
         """Create or update entity based on unique constraints."""
-        filters = {k: v for k, v in kwargs.items() if k == "id"}
-        if self.exists(**filters):
-            entity = self.get_by_id(kwargs.get("id"))
+        id_value = kwargs.get("id", None)
+        if id_value is not None and self.exists(id=id_value):
+            entity = self.get_by_id(id_value)
             if entity:
                 for key, value in kwargs.items():
                     if hasattr(entity, key):

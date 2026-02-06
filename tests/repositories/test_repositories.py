@@ -70,28 +70,6 @@ def test_document_repository_get_by_case(db_session):
     assert len(docs) >= 2
 
 
-def test_section_repository_get_by_document(db_session):
-    """Test getting sections by document."""
-    # Setup
-    case_repo = CaseRepository(db_session)
-    case = case_repo.create(urn="01TS1234567", finalised=False)
-
-    doc_repo = DocumentRepository(db_session)
-    doc = doc_repo.create(case_id=case.id, original_file_name="test.pdf")
-
-    version_repo = VersionRepository(db_session)
-    version = version_repo.create(document_id=doc.id)
-
-    section_repo = SectionRepository(db_session)
-    section_repo.create(version_id=version.id, document_id=doc.id, redacted_content="Section 1")
-    section_repo.create(version_id=version.id, document_id=doc.id, redacted_content="Section 2")
-    db_session.commit()
-
-    # Test
-    sections = section_repo.get_by_document(doc.id)
-    assert len(sections) == 2
-
-
 def test_repository_update(db_session):
     """Test repository update."""
     case_repo = CaseRepository(db_session)

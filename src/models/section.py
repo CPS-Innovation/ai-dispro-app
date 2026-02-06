@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, Integer
@@ -14,6 +14,7 @@ from ..database.base import Base
 
 _settings = SettingsManager.get_instance()
 
+
 class Section(Base):
     """Relevant section of a document version."""
 
@@ -24,7 +25,7 @@ class Section(Base):
 
     # Foreign keys
     experiment_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey(f"{_settings.storage.table_name_experiments}.id"), nullable=True, index=True
+        String(36), ForeignKey(f"{_settings.storage.table_name_experiments}.id"), nullable=False, index=True
     )
     version_id: Mapped[int] = mapped_column(
         Integer, ForeignKey(f"{_settings.storage.table_name_versions}.id"), nullable=False, index=True
@@ -34,7 +35,7 @@ class Section(Base):
     content_blob_container: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     content_blob_name: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     redacted_content: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     version: Mapped["Version"] = relationship(

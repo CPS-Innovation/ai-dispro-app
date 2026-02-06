@@ -53,14 +53,6 @@ def test_singleton_pattern():
     assert settings1 is settings2
 
 
-def test_get_settings_convenience():
-    """Test convenience function."""
-    settings1 = SettingsManager.get_instance()
-    settings2 = SettingsManager.get_instance()
-
-    assert settings1 is settings2
-
-
 def test_load_from_env():
     """Test loading settings from environment variables."""
     env_vars = {

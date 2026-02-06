@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Integer
@@ -31,7 +31,7 @@ class Document(Base):
     doc_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     file_extension: Mapped[str | None] = mapped_column(String(50), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     case: Mapped["Case"] = relationship(

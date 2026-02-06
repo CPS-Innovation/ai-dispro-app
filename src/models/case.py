@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, DateTime, String, Integer
@@ -29,7 +29,7 @@ class Case(Base):
     area_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     unit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     registration_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     defendants: Mapped[list["Defendant"]] = relationship(

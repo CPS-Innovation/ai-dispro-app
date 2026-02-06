@@ -1,12 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.models.experiment import Experiment
-
 if TYPE_CHECKING:
+    from .experiment import Experiment
     from .analysisjob import AnalysisJob
 
 from ..config import SettingsManager
@@ -51,7 +50,7 @@ class AnalysisResult(Base):
     reviewer_final_verdict: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reviewer_confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     reviewer_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     analysis_job: Mapped["AnalysisJob"] = relationship(
