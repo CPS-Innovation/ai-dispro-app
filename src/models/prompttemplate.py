@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer
+from sqlalchemy import String, Integer, Float
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..config import SettingsManager
@@ -20,7 +20,7 @@ class PromptTemplate(Base):
     agent: Mapped[str | None] = mapped_column(String(128), nullable=True)
     theme: Mapped[str | None] = mapped_column(String(128), nullable=True)
     pattern: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    version: Mapped[float | None] = mapped_column(nullable=True)
+    version: Mapped[float | None] = mapped_column(Float, nullable=True)
     
     def __repr__(self) -> str:
         return f"<PromptTemplate(id='{self.id}', name='{self.name}')>"
