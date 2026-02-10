@@ -13,6 +13,7 @@ from ..database.base import Base
 
 _settings = SettingsManager.get_instance()
 
+
 class Version(Base):
     """Document version entity."""
 

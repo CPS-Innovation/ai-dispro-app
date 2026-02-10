@@ -20,7 +20,7 @@ class PromptTemplate(Base):
     agent: Mapped[str | None] = mapped_column(String(128), nullable=True)
     theme: Mapped[str | None] = mapped_column(String(128), nullable=True)
     pattern: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    version: Mapped[float | None] = mapped_column(nullable=True)
     
     def __repr__(self) -> str:
         return f"<PromptTemplate(id='{self.id}', name='{self.name}')>"

@@ -33,7 +33,7 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
         theme: str,
         pattern: str,
         agent: str,
-        version: str,
+        version: float,
     ) -> PromptTemplate:
         """Upsert a prompt template by its unique fields."""
         prompt_templates = self.get_by(
@@ -55,6 +55,6 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
             theme=theme,
             pattern=pattern,
             agent=agent,
-            version=str(version or "0.1"),
+            version=version or 0.0,
             template=template,
         )
