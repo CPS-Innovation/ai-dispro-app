@@ -7,11 +7,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 if TYPE_CHECKING:
     from .case import Case
     from .charge import Charge
+    from .offence import Offence
 
 from ..config import SettingsManager
 from ..database.base import Base
 
 _settings = SettingsManager.get_instance()
+
 
 class Defendant(Base):
     """Defendant (Person in a case) entity."""
@@ -39,6 +41,11 @@ class Defendant(Base):
     )
     charges: Mapped[list["Charge"]] = relationship(
         "Charge",
+        back_populates="defendant",
+        cascade="all, delete-orphan"
+    )
+    offences: Mapped[list["Offence"]] = relationship(
+        "Offence",
         back_populates="defendant",
         cascade="all, delete-orphan"
     )

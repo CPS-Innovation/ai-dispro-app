@@ -153,6 +153,7 @@ class CMSClient:
             self,
             case_id: int,
             include_charges: bool = True,
+            include_offences: bool = True,
         ) -> list | None:
         """Get defendants for a case ID."""
 
@@ -174,23 +175,34 @@ class CMSClient:
                         "dob": defendant.get("dob", None),
                         "ethnicity": defendant.get("personalDetail", {}).get("ethnicity", None),
                         "gender": defendant.get("personalDetail", {}).get("gender", None),
-                        "charges": []
+                        "charges": [],
+                        "offences": [],
                     }
-                    if not include_charges:
-                        ans.append(defendant_data)
-                        continue
-                    charges = defendant.get("charges", None)
-                    if charges is None or len(charges) == 0:
-                        charges = defendant.get("proposedCharges", None)
-                    for charge in charges or []:
-                        charge_data = {
-                            "id": charge.get("id"),
-                            "defendant_id": defendant.get("id"),
-                            "code": charge.get("code"),
-                            "description": charge.get("description"),
-                            "latest_verdict": charge.get("latestVerdict", None),
-                        }
-                        defendant_data["charges"].append(charge_data)
+                    if include_charges:
+                        charges = defendant.get("charges", [])
+                        if len(charges) == 0:
+                            charges = defendant.get("proposedCharges", [])
+                        for charge in charges:
+                            charge_data = {
+                                "id": charge.get("id"),
+                                "defendant_id": defendant.get("id"),
+                                "code": charge.get("code"),
+                                "description": charge.get("description"),
+                                "latest_verdict": charge.get("latestVerdict", None),
+                            }
+                            defendant_data["charges"].append(charge_data)
+                    if include_offences:
+                        offences = defendant.get("offences", [])
+                        for offence in offences:
+                            offence_data = {
+                                "id": offence.get("id"),
+                                "defendant_id": defendant.get("id"),
+                                "type": offence.get("type"),
+                                "code": offence.get("code"),
+                                "description": offence.get("description"),
+                                "active": offence.get("active", None),
+                            }
+                            defendant_data["offences"].append(offence_data)
                     ans.append(defendant_data)
                 logger.info(f"Found metadata for case ID: {case_id}")
                 return ans
@@ -227,3 +239,7 @@ class CMSClient:
         response = requests.get(url, headers=headers, stream=True)
         response.raise_for_status()
         return response
+    
+    def get_mg3_from_history(self, case_id: int) -> dict | None:
+        """Get initial review information for a given case ID."""
+        # TODO

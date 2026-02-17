@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from ..models.charge import Charge
+from ..models import Charge
 from .base import BaseRepository
 
 

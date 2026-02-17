@@ -46,6 +46,7 @@ class StorageSettings(Settings):
     table_name_cases: str = "cases"
     table_name_defendants: str = "defendants"
     table_name_charges: str = "charges"
+    table_name_offences: str = "offences"
     table_name_documents: str = "documents"
     table_name_versions: str = "versions"
     table_name_experiments: str = "experiments"
@@ -198,6 +199,7 @@ class SettingsManager:
                 "TABLE_NAME_CASES": "table_name_cases",
                 "TABLE_NAME_DEFENDANTS": "table_name_defendants",
                 "TABLE_NAME_CHARGES": "table_name_charges",
+                "TABLE_NAME_OFFENCES": "table_name_offences",
                 "TABLE_NAME_DOCUMENTS": "table_name_documents",
                 "TABLE_NAME_VERSIONS": "table_name_versions",
                 "TABLE_NAME_EXPERIMENTS": "table_name_experiments",

@@ -130,6 +130,7 @@ class TestCMSClientCaseOperations:
         defendants = authenticated_client.get_case_defendants(
             case_id=test_case_id,
             include_charges=False,
+            include_offences=False,
         )
         
         assert defendants is not None
@@ -147,6 +148,30 @@ class TestCMSClientCaseOperations:
                 charge = defendant["charges"][0]
                 assert "description" in charge
                 assert "latestVerdict" in charge
+
+    def test_get_case_defendant_offences(self, authenticated_client, test_case_id):
+        """Test retrieving defendant offences for a case."""
+        defendants = authenticated_client.get_case_defendants(
+            case_id=test_case_id,
+            include_charges=False,
+            include_offences=True,
+        )
+        
+        assert defendants is not None
+        assert isinstance(defendants, list)
+        
+        # If there are defendants, verify structure
+        if len(defendants) > 0:
+            defendant = defendants[0]
+            assert "ethnicity" in defendant
+            assert "charges" in defendant
+            assert isinstance(defendant["charges"], list)
+            
+            # If there are offences, verify structure
+            if len(defendant["offences"]) > 0:
+                offence = defendant["offences"][0]
+                assert "description" in offence
+                assert "code" in offence
 
     def test_get_invalid_urn_or_case_id_returns_none(self, authenticated_client):
         """Test that invalid URN or case ID returns None gracefully."""
