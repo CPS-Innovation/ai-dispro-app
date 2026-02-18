@@ -28,7 +28,6 @@ class Offence(Base):
 
     code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     active: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)

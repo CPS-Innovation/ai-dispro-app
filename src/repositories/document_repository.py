@@ -11,7 +11,7 @@ class DocumentRepository(BaseRepository[Document]):
     def __init__(self, session: Session):
         super().__init__(Document, session)
 
-    def get_by_case(self, case_id: str) -> list[Document]:
+    def get_by_case(self, case_id: int) -> list[Document]:
         """Get all documents for a case."""
         stmt = select(Document).where(
             Document.case_id == case_id

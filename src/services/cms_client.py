@@ -135,7 +135,7 @@ class CMSClient:
         """Get case summary information for a given case ID."""
         url = f"{self.base_url}/cases/{case_id}/summary"
         headers = self._get_headers()
-        keys = ["urn", "finalised", "areaId", "unitId", "registrationDate"]
+        keys = ["urn", "finalised", "registrationDate", "areaId", "areaName", "unitId", "unitName"]
 
         try:
             response = requests.get(url, headers=headers)
@@ -173,6 +173,7 @@ class CMSClient:
                         "id": defendant.get("id"),
                         "case_id": case_id,
                         "dob": defendant.get("dob", None),
+                        "youth": defendant.get("youth", None),
                         "ethnicity": defendant.get("personalDetail", {}).get("ethnicity", None),
                         "gender": defendant.get("personalDetail", {}).get("gender", None),
                         "charges": [],

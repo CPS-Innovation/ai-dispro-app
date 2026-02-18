@@ -56,8 +56,9 @@ class BaseRepository(Generic[ModelType]):
         """
         stmt = select(self.model)
         for key, value in filters.items():
-            if hasattr(self.model, key):
-                stmt = stmt.where(getattr(self.model, key) == value)
+            if not hasattr(self.model, key):
+                raise ValueError(f"Unknown filter field: {key}")            
+            stmt = stmt.where(getattr(self.model, key) == value)
 
         return list(self.session.execute(stmt).scalars().all())
 

@@ -22,7 +22,7 @@ class EventRepository(BaseRepository[Event]):
         correlation_id: str | None = None,
         source: str | None = DEFAULT_SOURCE,
         ) -> Event:
-        """Get all results for an analysis job."""
+        """Logs an event to the database."""
         return self.create(
             source=source,
             event_type=event_type,

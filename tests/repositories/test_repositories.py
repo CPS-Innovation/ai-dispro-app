@@ -1,3 +1,5 @@
+import pytest
+
 from src.config import SettingsManager
 
 from src.repositories import (
@@ -8,6 +10,7 @@ from src.repositories import (
 )
 
 
+@pytest.mark.integration
 def test_case_repository_create(db_session):
     """Test Case repository create (with embedded URN)."""
     case_repo = CaseRepository(db_session)
@@ -22,6 +25,7 @@ def test_case_repository_create(db_session):
     assert case.id is not None
 
 
+@pytest.mark.integration
 def test_case_repository_get_by_urn(db_session):
     """Test Case repository get by URN."""
     # Setup
@@ -35,6 +39,7 @@ def test_case_repository_get_by_urn(db_session):
     assert retrieved.urn == "01TS1234567"
 
 
+@pytest.mark.integration
 def test_document_repository_create(db_session):
     """Test Document repository create."""
     # Setup - create a Case with URN
@@ -55,6 +60,7 @@ def test_document_repository_create(db_session):
     assert doc.original_file_name == "test.pdf"
 
 
+@pytest.mark.integration
 def test_document_repository_get_by_case(db_session):
     """Test getting documents by case."""
     # Setup
@@ -72,6 +78,7 @@ def test_document_repository_get_by_case(db_session):
     assert len(docs) >= 2
 
 
+@pytest.mark.integration
 def test_repository_update(db_session):
     """Test repository update."""
     case_repo = CaseRepository(db_session)
@@ -93,6 +100,8 @@ def test_repository_update(db_session):
     assert updated.finalised is True
     assert updated.area_id == 1
 
+
+@pytest.mark.integration
 def test_repository_delete(db_session):
     """Test repository delete."""
     case_repo = CaseRepository(db_session)
@@ -106,6 +115,8 @@ def test_repository_delete(db_session):
     # Verify deletion
     assert case_repo.get_by_urn("01TS0000001") is None
 
+
+@pytest.mark.integration
 def test_prompt_template_repository_create(db_session):
     """Test PromptTemplate repository create."""
     repo = PromptTemplateRepository(db_session)
@@ -133,6 +144,7 @@ def test_prompt_template_repository_create(db_session):
     db_session.commit()
 
 
+@pytest.mark.integration
 def test_prompt_template_repository_upsert(db_session):
     """Test PromptTemplate repository upsert."""
     repo = PromptTemplateRepository(db_session)
@@ -167,6 +179,7 @@ def test_prompt_template_repository_upsert(db_session):
     db_session.commit()
 
 
+@pytest.mark.integration
 def test_event_repository_log(db_session):
     """Test Event repository log."""
     repo = EventRepository(db_session)
