@@ -13,10 +13,6 @@ pytestmark = pytest.mark.integration
 
 def test_cms_headers_require_authentication():
     """Test that getting headers without authentication raises an error."""
-    # Set environment to testing
-    settings = SettingsManager.get_instance()
-    settings.application.environment = Environment.TESTING
-
     client = CMSClient()
     
     # Before authentication, accessing headers should raise ValueError
@@ -29,10 +25,6 @@ def test_cms_headers_require_authentication():
 
 def test_cms_authentication_sets_token():
     """Test that authentication sets the authentication token."""
-    # Set environment to testing
-    settings = SettingsManager.get_instance()
-    settings.application.environment = Environment.TESTING
-
     client = CMSClient()
 
     assert client.cms_auth_values is None  # Not authenticated yet
@@ -56,30 +48,13 @@ def test_cms_authentication_sets_token():
     # Clean up singleton instance
     SettingsManager.reset_instance()
 
+
 class TestCMSClientCaseOperations:
     """Test CMS Client case-related operations."""
 
     @pytest.fixture(scope="class")
     def authenticated_client(self):
         """Provide an authenticated CMS client for the test class."""
-        settings = SettingsManager.get_instance()
-        settings.application.environment = Environment.TESTING
-
-        # Verify we have the necessary configuration
-        if not all([
-            settings.cms.endpoint,
-            settings.cms.api_key_secret_name,
-            settings.cms.username_secret_name,
-            settings.cms.password_secret_name,
-        ]):
-            pytest.skip(
-                "CMS integration test environment variables are not fully set"
-                "Set: CMS_ENDPOINT, "
-                "CMS_API_KEY_SECRET_NAME, "
-                "CMS_USER_SECRET_NAME, "
-                "CMS_PASSWORD_SECRET_NAME"
-            )
-
         client = CMSClient()
         auth_success = client.authenticate()
         
@@ -203,3 +178,14 @@ class TestCMSClientCaseOperations:
             authenticated_client.download_data(
                 test_case_id, invalid_document_id, invalid_version_id
             )
+
+    def test_get_mg3_from_history(
+        self,
+        authenticated_client,
+        test_case_id
+    ):
+        """Test retrieving MG3 from history."""
+        mg3_components = authenticated_client.get_mg3_from_history(case_id=test_case_id)
+        
+        assert mg3_components is not None
+        assert isinstance(mg3_components, list)
