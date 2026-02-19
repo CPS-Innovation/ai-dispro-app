@@ -241,7 +241,7 @@ class CMSClient:
         response.raise_for_status()
         return response
     
-    def get_mg3_from_history(self, case_id: int) -> dict | None:
+    def get_mg3_from_history(self, case_id: int) -> list:
         """Get initial review information for a given case ID."""
         url = f"{self.base_url}/cases/{case_id}/history"
         headers = self._get_headers()
