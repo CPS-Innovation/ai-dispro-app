@@ -135,7 +135,7 @@ class CMSClient:
         """Get case summary information for a given case ID."""
         url = f"{self.base_url}/cases/{case_id}/summary"
         headers = self._get_headers()
-        keys = ["urn", "finalised", "areaId", "unitId", "registrationDate"]
+        keys = ["urn", "finalised", "registrationDate", "areaId", "areaName", "unitId", "unitName"]
 
         try:
             response = requests.get(url, headers=headers)
@@ -153,6 +153,7 @@ class CMSClient:
             self,
             case_id: int,
             include_charges: bool = True,
+            include_offences: bool = True,
         ) -> list | None:
         """Get defendants for a case ID."""
 
@@ -172,25 +173,37 @@ class CMSClient:
                         "id": defendant.get("id"),
                         "case_id": case_id,
                         "dob": defendant.get("dob", None),
+                        "youth": defendant.get("youth", None),
                         "ethnicity": defendant.get("personalDetail", {}).get("ethnicity", None),
                         "gender": defendant.get("personalDetail", {}).get("gender", None),
-                        "charges": []
+                        "charges": [],
+                        "offences": [],
                     }
-                    if not include_charges:
-                        ans.append(defendant_data)
-                        continue
-                    charges = defendant.get("charges", None)
-                    if charges is None or len(charges) == 0:
-                        charges = defendant.get("proposedCharges", None)
-                    for charge in charges or []:
-                        charge_data = {
-                            "id": charge.get("id"),
-                            "defendant_id": defendant.get("id"),
-                            "code": charge.get("code"),
-                            "description": charge.get("description"),
-                            "latest_verdict": charge.get("latestVerdict", None),
-                        }
-                        defendant_data["charges"].append(charge_data)
+                    if include_charges:
+                        charges = defendant.get("charges", [])
+                        if len(charges) == 0:
+                            charges = defendant.get("proposedCharges", [])
+                        for charge in charges:
+                            charge_data = {
+                                "id": charge.get("id"),
+                                "defendant_id": defendant.get("id"),
+                                "code": charge.get("code"),
+                                "description": charge.get("description"),
+                                "latest_verdict": charge.get("latestVerdict", None),
+                            }
+                            defendant_data["charges"].append(charge_data)
+                    if include_offences:
+                        offences = defendant.get("offences", [])
+                        for offence in offences:
+                            offence_data = {
+                                "id": offence.get("id"),
+                                "defendant_id": defendant.get("id"),
+                                "type": offence.get("type"),
+                                "code": offence.get("code"),
+                                "description": offence.get("description"),
+                                "active": offence.get("active", None),
+                            }
+                            defendant_data["offences"].append(offence_data)
                     ans.append(defendant_data)
                 logger.info(f"Found metadata for case ID: {case_id}")
                 return ans
@@ -227,3 +240,38 @@ class CMSClient:
         response = requests.get(url, headers=headers, stream=True)
         response.raise_for_status()
         return response
+    
+    def get_mg3_from_history(self, case_id: int) -> list:
+        """Get initial review information for a given case ID."""
+        url = f"{self.base_url}/cases/{case_id}/history"
+        headers = self._get_headers()
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        mg3_entries = []
+        mg3_component_types_url = {
+            "InitialReview": f"{self.base_url}/cases/{{case_id}}/history/{{history_id}}/initial-review",
+            "PreChargeDecision": f"{self.base_url}/cases/{{case_id}}/history/{{history_id}}/pre-charge-decision",
+            "PreChargeDecisionAnalysis": f"{self.base_url}/cases/{{case_id}}/history/{{history_id}}/pcd-analysis",
+        }
+        for entry in data:
+            if entry.get("type") in mg3_component_types_url.keys():
+                mg3_entries.append(entry)
+
+        mg3_components = []
+        for entry in mg3_entries:
+            history_id = entry.get("id")
+            component_type = entry.get("type")
+            component_url = mg3_component_types_url[component_type].format(case_id=case_id, history_id=history_id)
+            try:
+                component_response = requests.get(component_url, headers=headers)
+                component_response.raise_for_status()
+                component_data = component_response.json()
+                mg3_components.append(component_data)
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Failed to get {component_type} data: {e}")
+                continue
+
+        return mg3_components

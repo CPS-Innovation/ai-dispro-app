@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from ..models.version import Version
+from ..models import Version
 from .base import BaseRepository
 
 

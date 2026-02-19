@@ -1,17 +1,19 @@
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Integer
+from sqlalchemy import Date, DateTime, ForeignKey, String, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from .case import Case
     from .charge import Charge
+    from .offence import Offence
 
 from ..config import SettingsManager
 from ..database.base import Base
 
 _settings = SettingsManager.get_instance()
+
 
 class Defendant(Base):
     """Defendant (Person in a case) entity."""
@@ -27,6 +29,7 @@ class Defendant(Base):
     )
 
     dob: Mapped[date | None] = mapped_column(Date, nullable=True)
+    youth: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
     ethnicity: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
@@ -39,6 +42,11 @@ class Defendant(Base):
     )
     charges: Mapped[list["Charge"]] = relationship(
         "Charge",
+        back_populates="defendant",
+        cascade="all, delete-orphan"
+    )
+    offences: Mapped[list["Offence"]] = relationship(
+        "Offence",
         back_populates="defendant",
         cascade="all, delete-orphan"
     )

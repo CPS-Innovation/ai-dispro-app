@@ -5,12 +5,15 @@ from src.models import (
     Case,
     Defendant,
     Charge,
+    Offence,
     Document,
     Version,
     Experiment,
     Section,
     AnalysisJob,
     AnalysisResult,
+    PromptTemplate,
+    Event,
 )
 
 
@@ -115,6 +118,35 @@ def test_create_charge(db_session):
         db_session.delete(item)
     db_session.commit()
 
+@pytest.mark.integration
+def test_create_offence(db_session):
+    """Test Offence creation."""
+    # Create Case, and Defendant
+    case = Case(urn="01TS0000003", finalised=False)
+    db_session.add(case)
+    db_session.commit()
+    defendant = Defendant(case_id=case.id)
+    db_session.add(defendant)
+    db_session.commit()
+
+    # Create Offence
+    offence = Offence(
+        defendant_id=defendant.id,
+        description="Theft",
+    )
+    db_session.add(offence)
+    db_session.commit()
+
+    # Verify
+    retrieved = db_session.query(Offence).filter_by(defendant_id=defendant.id).first()
+    assert retrieved is not None
+    assert retrieved.description == "Theft"
+    assert retrieved.defendant.case.urn == "01TS0000003"
+    
+    # Clean up
+    for item in [retrieved, offence, defendant, case]:
+        db_session.delete(item)
+    db_session.commit()
 
 @pytest.mark.integration
 def test_create_document(db_session):
@@ -314,6 +346,56 @@ def test_create_analysis_result(db_session):
 
     # Clean up
     for item in [retrieved, analysis_job, section, experiment, version, document, case]:
+        db_session.delete(item)
+    db_session.commit()
+
+
+@pytest.mark.integration
+def test_create_prompt_template(db_session):
+    """Test PromptTemplate creation."""
+    # Create PromptTemplate
+    prompt_template = PromptTemplate(
+        name="Test Prompt",
+        template="This is a test prompt template."
+    )
+    db_session.add(prompt_template)
+    db_session.commit()
+
+    # Verify
+    retrieved = (
+        db_session.query(PromptTemplate).filter_by(id=prompt_template.id).first()
+    )
+    assert retrieved is not None
+    assert retrieved.name == "Test Prompt"
+    assert retrieved.template == "This is a test prompt template."
+    
+    # Clean up
+    for item in [retrieved, prompt_template]:
+        db_session.delete(item)
+    db_session.commit()
+
+
+@pytest.mark.integration
+def test_create_event(db_session):
+    """Test Event creation."""
+    # Create Event
+    event = Event(
+        source="test",
+        event_type="test"
+    )
+    db_session.add(event)
+    db_session.commit()
+
+    # Verify
+    retrieved = (
+        db_session.query(Event).filter_by(id=event.id).first()
+    )
+    assert retrieved is not None
+    assert retrieved.source == "test"
+    assert retrieved.event_type == "test"
+    
+    # Clean up
+    for item in [retrieved, event]:
         db_session.delete(item)
     db_session.commit()
 

@@ -24,10 +24,11 @@ class Case(Base):
     # URN is indexed for fast lookup
     urn: Mapped[str] = mapped_column(String(255), primary_key=False, index=True)
 
-
     finalised: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     area_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    area_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     unit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unit_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     registration_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
