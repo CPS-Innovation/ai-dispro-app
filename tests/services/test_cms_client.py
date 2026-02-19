@@ -4,7 +4,7 @@ import os
 import pytest
 
 from src.services import CMSClient
-from src.config import Environment, SettingsManager
+from src.config import SettingsManager
 
 
 # Mark all tests in this module as integration tests
