@@ -14,9 +14,9 @@ class IngestionResult:
     """Ingestion result with created entity IDs."""
     success: bool
     case_id: str | None = None
-    document_ids: list[str] = None
-    version_ids: list[str] = None
-    section_ids: list[str] = None
+    document_ids: list[str] | None = None
+    version_ids: list[str] | None = None
+    section_ids: list[str] | None = None
     error: str | None = None
     
     def __post_init__(self):

@@ -10,7 +10,7 @@ _settings = SettingsManager.get_instance()
 
 
 class Event(Base):
-    """Event model representing a run."""
+    """Event model for audit."""
 
     __tablename__ = _settings.storage.table_name_events
 

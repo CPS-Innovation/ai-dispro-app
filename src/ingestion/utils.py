@@ -49,7 +49,7 @@ def is_valid_subset(text: str, subset: str) -> bool:
             if next_block.size and next_block.a <= concat_block["end"] + BIGGEST_ALLOWED_GAP:
                 concat_block["end"] = next_block.a + next_block.size
                 curr_idx = end_idx
-        logger.debug("Concatenated [%d:%d]: %s", concat_block["start"], concat_block["end"], text_clean[concat_block["start"]:concat_block["end"]])
+        logger.debug(f"Concatenated [{concat_block['start']}:{concat_block['end']}]: {text_clean[concat_block['start']:concat_block['end']]}")
         concatenated_blocks.append(concat_block)
 
     # Find the longest contiguous match

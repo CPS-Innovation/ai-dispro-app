@@ -68,8 +68,8 @@ class IngestionOrchestrator:
         "application/pdf", # .pdf
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',  # .docx
     ]
-    event_repo: EventRepository
-    correlation_id: str
+    event_repo: EventRepository | None
+    correlation_id: str | None
 
     def __init__(
             self,
@@ -165,7 +165,9 @@ class IngestionOrchestrator:
         if case_summary:
             case_data["finalised"] = case_summary.get("finalised", None)
             case_data["area_id"] = case_summary.get("areaId", None)
+            case_data["area_name"] = case_summary.get("areaName", None)
             case_data["unit_id"] = case_summary.get("unitId", None)
+            case_data["unit_name"] = case_summary.get("unitName", None)
             case_data["registration_date"] = case_summary.get("registrationDate", None)
         logger.debug("Case info retrieved: case_id={}", case_id)
 
@@ -401,7 +403,7 @@ class IngestionOrchestrator:
             else:
                 logger.warning(
                     "Document processing failed: doc_id={}, error={}",
-                    doc_data.get("id"),
+                    version.document_id,
                     doc_result.error,
                 )
         
@@ -462,7 +464,10 @@ class IngestionOrchestrator:
         with get_session() as session:
             
             experiment_repo = ExperimentRepository(session)
-            experiment: Experiment = experiment_repo.upsert(id=experiment_id)
+            if experiment_id is not None:
+                experiment: Experiment = experiment_repo.upsert(id=experiment_id)
+            else:
+                experiment: Experiment = experiment_repo.create()
 
             section_repo = SectionRepository(session)
             
@@ -525,6 +530,8 @@ class IngestionOrchestrator:
         with get_session() as session:
             prompt_template_repo: PromptTemplateRepository = PromptTemplateRepository(session)
             prompt_template = prompt_template_repo.get_last_version_by(agent="section_extractor")
+            if prompt_template is None:
+                raise ValueError("No prompt template found for agent 'section_extractor'")
         
         template = Environment(autoescape=True).from_string(source=prompt_template.template)
         context_text = parsing_result.get("content", "")
@@ -576,6 +583,8 @@ class IngestionOrchestrator:
         with get_session() as session:
             prompt_template_repo: PromptTemplateRepository = PromptTemplateRepository(session)
             prompt_template = prompt_template_repo.get_last_version_by(agent="redactor")
+            if prompt_template is None:
+                raise ValueError("No prompt template found for agent 'redactor'")
         
         template = Environment(autoescape=True).from_string(source=prompt_template.template)
         compiled_prompt = template.render(contextText=content)
@@ -605,7 +614,7 @@ class IngestionOrchestrator:
         actor_id: str | None = None,
         action: str,
         object_type: str,
-        object_id: str,
+        object_id: str | None = None,
         correlation_id: str | None = None,
         source: str | None = None,
         ) -> None:
@@ -616,7 +625,7 @@ class IngestionOrchestrator:
                 actor_id=actor_id or "INGESTION_ORCHESTRATOR",
                 action=action,
                 object_type=object_type,
-                object_id=object_id,
+                object_id=str(object_id) if object_id is not None else None,
                 correlation_id=correlation_id or self.correlation_id,
                 source=source or self.__class__.__name__,
             )

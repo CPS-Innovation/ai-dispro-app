@@ -246,10 +246,15 @@ class CMSClient:
         url = f"{self.base_url}/cases/{case_id}/history"
         headers = self._get_headers()
 
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
+        data: list = []
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Failed to get case history: {e}")
+            return []
         
-        data = response.json()
         mg3_entries = []
         mg3_component_types_url = {
             "InitialReview": f"{self.base_url}/cases/{{case_id}}/history/{{history_id}}/initial-review",

@@ -9,6 +9,17 @@ from src.ingestion.orchestrator import IngestionOrchestrator
 from src.ingestion.models import IngestionResult, TriggerType
 
 
+@pytest.fixture(scope="class")
+def db_initialized():
+    init_session_manager() # Ensure DB is initialized
+    init_database() # Ensure tables are created
+    yield
+
+@pytest.fixture(scope="class")
+def settings():
+    return SettingsManager.get_instance()
+
+
 class TestIngestion:
     """Tests for IngestionOrchestrator initialization."""
 
@@ -182,42 +193,37 @@ class TestIngestion:
         
         assert len(filtered) == 2  # PDF and DOCX
 
-
 class TestIngestionIntegration:
-
-    init_session_manager() # Ensure DB is initialized
-    init_database() # Ensure tables are created
-    settings = SettingsManager.get_instance()
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_ingest_urn(self):
+    async def test_ingest_urn(self, db_initialized, settings):
         ingestion_orchestrator = IngestionOrchestrator()
         result = await ingestion_orchestrator.ingest(
             trigger_type=TriggerType.URN,
-            value=self.settings.test.cms_urn,
+            value=settings.test.cms_urn,
             experiment_id="TST-EXP-Ingestion-URN",
         )
         assert result.success
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_ingest_blob(self):
+    async def test_ingest_blob(self, db_initialized, settings):
         ingestion_orchestrator = IngestionOrchestrator()
         result = await ingestion_orchestrator.ingest(
             trigger_type=TriggerType.BLOB_NAME,
-            value=self.settings.test.blob_name,
+            value=settings.test.blob_name,
             experiment_id="TST-EXP-Ingestion-BLOB_NAME",
         )
         assert result.success
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_ingest_file(self):
+    async def test_ingest_file(self, db_initialized, settings):
         ingestion_orchestrator = IngestionOrchestrator()
         result = await ingestion_orchestrator.ingest(
             trigger_type=TriggerType.FILEPATH,
-            value=self.settings.test.filepath,
+            value=settings.test.filepath,
             experiment_id="TST-EXP-Ingestion-FILEPATH",
         )
         assert result.success
