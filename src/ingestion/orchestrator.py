@@ -179,15 +179,12 @@ class IngestionOrchestrator:
             logger.debug("Document {}: {} ({}:{})", doc_idx, doc_data.get("originalFileName"), doc_data.get("cmsDocCategory"), doc_data.get("type"))
             if doc_data["cmsDocCategory"] not in self.supportedCMSDocCategories:
                 logger.debug("Skipping '{}'. Reason: non-MGForm document {}", doc_data.get("originalFileName"), doc_data.get("id"))
-                del doc_data
                 continue
             if doc_data["type"] not in self.supportedDocTypes:
                 logger.debug("Skipping '{}'. Reason: non-MG3 document {}", doc_data.get("originalFileName"), doc_data.get("id"))
-                del doc_data
                 continue
             if doc_data["mimeType"] not in self.supportedMimeTypes:
                 logger.debug("Skipping '{}'. Reason: unsupported mime type document {}", doc_data.get("originalFileName"), doc_data.get("id"))
-                del doc_data
                 continue
             selected_documents_data.append(doc_data)
             # Get raw documents from CMS
@@ -508,7 +505,7 @@ class IngestionOrchestrator:
         def __parse(doc_intel: DocumentIntelligenceClient, content: bytes) -> AnalyzeResult:
             """Parse document using Azure Document Intelligence."""
             poller: AnalyzeDocumentLROPoller = doc_intel.begin_analyze_document(
-                model_id= "prebuilt-layout",
+                model_id="prebuilt-layout",
                 analyze_request=content,
                 content_type="application/octet-stream",
                 # try content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"

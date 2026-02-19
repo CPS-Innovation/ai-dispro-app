@@ -11,8 +11,8 @@ from src.ingestion.models import IngestionResult, TriggerType
 
 @pytest.fixture(scope="class")
 def db_initialized():
-    init_session_manager() # Ensure DB is initialized
-    init_database() # Ensure tables are created
+    init_session_manager()  # Ensure DB is initialized
+    init_database()  # Ensure tables are created
     yield
 
 @pytest.fixture(scope="class")
