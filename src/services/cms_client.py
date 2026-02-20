@@ -242,7 +242,17 @@ class CMSClient:
         return response
     
     def get_mg3_from_history(self, case_id: int) -> list:
-        """Get initial review information for a given case ID."""
+        """Get initial review information for a given case ID.
+        
+        A case (standard, non early advice case):
+            * MUST have one PreChargeDecision
+            * MUST have one InitialReview
+            * May have zero or more PreChargeDecisionAnalysis
+        An early advice case (EA case):
+            * MUST have one or more PreChargeDecision
+            * May will have one InitialReview
+            * MUST have one or more PreChargeDecisionAnalysis (probably more than one)
+        """
         url = f"{self.base_url}/cases/{case_id}/history"
         headers = self._get_headers()
 
