@@ -29,6 +29,7 @@ class TestIngestion:
 
         # Verify TriggerType enum
         assert hasattr(TriggerType, 'URN')
+        assert hasattr(TriggerType, 'URN_LIST')
         assert hasattr(TriggerType, 'BLOB_NAME')
         assert hasattr(TriggerType, 'FILEPATH')
         
@@ -36,7 +37,7 @@ class TestIngestion:
         ingestion_result_fields = {f.name for f in fields(IngestionResult)}
         assert 'success' in ingestion_result_fields
         assert 'error' in ingestion_result_fields
-        assert 'case_id' in ingestion_result_fields
+        assert 'case_ids' in ingestion_result_fields
         assert 'document_ids' in ingestion_result_fields
 
         # Verify ingest method signature
@@ -202,6 +203,17 @@ class TestIngestionIntegration:
         result = await ingestion_orchestrator.ingest(
             trigger_type=TriggerType.URN,
             value=settings.test.cms_urn,
+            experiment_id="TST-EXP-Ingestion-URN",
+        )
+        assert result.success
+
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_ingest_urn_list(self, db_initialized, settings):
+        ingestion_orchestrator = IngestionOrchestrator()
+        result = await ingestion_orchestrator.ingest(
+            trigger_type=TriggerType.URN_LIST,
+            value=[settings.test.cms_urn],
             experiment_id="TST-EXP-Ingestion-URN",
         )
         assert result.success
