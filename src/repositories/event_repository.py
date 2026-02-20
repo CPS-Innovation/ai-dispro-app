@@ -18,7 +18,7 @@ class EventRepository(BaseRepository[Event]):
         actor_id: str,
         action: str,
         object_type: str,
-        object_id: str,
+        object_id: str | None = None,
         correlation_id: str | None = None,
         source: str | None = DEFAULT_SOURCE,
         ) -> Event:
