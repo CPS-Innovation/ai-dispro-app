@@ -23,12 +23,13 @@ class AnalysisOrchestrator:
 
     def __init__(
         self,
-        tasks: list[AnalysisTask] | None = DEFAULT_TASKS,
+        tasks: list[AnalysisTask] | None = None,
         event_repo: EventRepository | None = None,
         correlation_id: str | None = None,
     ):
         """Initialize the orchestrator."""
-        self.task_dict = {t.task_id: t for t in tasks}
+        task_list = list(tasks or DEFAULT_TASKS)
+        self.task_dict = {t.task_id: t for t in task_list}
         logger.info(f"Initialized AnalysisOrchestrator with {len(self.task_dict)} tasks")
         self.event_repo = event_repo
         self.correlation_id = correlation_id

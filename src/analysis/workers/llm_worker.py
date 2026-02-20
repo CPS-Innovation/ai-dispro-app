@@ -70,7 +70,7 @@ class LLMWorker(AnalysisWorker):
                 result = AnalysisResult(
                     analysis_job_id=analysis_job_id,
                     experiment_id=experiment_id,
-                    prompt_template_id=prompt_template_obj.id,
+                    prompt_template_id=str(prompt_template_obj.id),
                     content=result_data.get("content", ""),
                     justification=result_data.get("justification", ""),
                     theme_id=self.theme_id,

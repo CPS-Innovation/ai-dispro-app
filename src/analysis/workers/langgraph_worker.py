@@ -127,7 +127,7 @@ class LangGraphWorker(AnalysisWorker):
                 result = AnalysisResult(
                     analysis_job_id=analysis_job_id,
                     experiment_id=experiment_id,
-                    prompt_template_id=self.critic_prompt_template.id,
+                    prompt_template_id=str(self.critic_prompt_template.id),
                     theme_id=self.theme_id,
                     pattern_id=self.pattern_id,
                     content=result_data.get("content", ""),
@@ -166,6 +166,8 @@ class LangGraphWorker(AnalysisWorker):
         return State(
             text_=text,
             pattern_=pattern,
+            references=[],
+            results=[],
         )
     
     def _build_graph(self) -> StateGraph:

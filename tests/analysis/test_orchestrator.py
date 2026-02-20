@@ -24,6 +24,18 @@ from src.repositories import (
 from src.models import Section
 
 
+@pytest.fixture(scope="class")
+def db_initialized():
+    init_session_manager()  # Ensure DB is initialized
+    init_database()  # Ensure tables are created
+    yield
+
+
+@pytest.fixture(scope="class")
+def settings():
+    return SettingsManager.get_instance()
+
+
 @pytest.fixture
 def mock_task() -> AnalysisTask:
     return AnalysisTask(
@@ -41,12 +53,9 @@ def mock_task() -> AnalysisTask:
 class TestAnalysisOrchestrator:
     """Tests for AnalysisOrchestrator."""
 
-    init_session_manager()  # Ensure DB is initialized
-    init_database()  # Ensure tables are created
-
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_call_analyze_with_mock(self, mock_task, mock_db_session):
+    async def test_call_analyze_with_mock(self, mock_task, db_initialized, settings, mock_db_session):
         """Test analyze_section method."""
 
         # Setup
@@ -133,8 +142,8 @@ class TestAnalysisOrchestrator:
             task_id="test_llmworker_task",
             worker_class=LLMWorker,
             worker_config={
-                "theme": "tst-theme-01",
-                "pattern": "tst-pattern-01",
+                "theme_id": "tst-theme-01",
+                "pattern_id": "tst-pattern-01",
             },
             save_results=False,
         )],
@@ -148,9 +157,9 @@ class TestAnalysisOrchestrator:
             save_results=False,
         )],
     ])
-    @pytest.mark.unit
+    @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_call_analyze(self, tasks, db_session):
+    async def test_call_analyze(self, tasks, db_initialized, settings, db_session):
         """Test analyze_section method."""
 
         # Setup
@@ -163,8 +172,8 @@ class TestAnalysisOrchestrator:
         version_repo = VersionRepository(db_session)
         version = version_repo.create(document_id=doc.id)
 
-        experiement_repo = ExperimentRepository(db_session)
-        experiment = experiement_repo.upsert(id="TST-EXP-test_call_analyze")
+        experiment_repo = ExperimentRepository(db_session)
+        experiment = experiment_repo.upsert(id="TST-EXP-test_call_analyze")
 
         section_repo = SectionRepository(db_session)
 

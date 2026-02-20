@@ -189,3 +189,19 @@ class TestCMSClientCaseOperations:
         
         assert mg3_components is not None
         assert isinstance(mg3_components, list)
+
+    @pytest.mark.parametrize("case_id", [
+        "2179140",
+        "2179141",
+        "2179142",
+    ])
+    def test_get_mg3_from_history2(
+        self,
+        authenticated_client,
+        case_id
+    ):
+        """Test retrieving MG3 from history."""
+        mg3_components = authenticated_client.get_mg3_from_history(case_id=case_id)
+        
+        assert mg3_components is not None
+        assert isinstance(mg3_components, list)

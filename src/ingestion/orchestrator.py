@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from tenacity import retry, stop_after_attempt, wait_fixed
-from typing import Any
+from typing import Any, Sequence
 from pathlib import Path
 
 from loguru import logger
@@ -252,7 +252,7 @@ class IngestionOrchestrator:
 
     async def _ingest_from_blob_name(
             self,
-            value: str,
+            value: Sequence[str],
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from blob storage name."""

@@ -46,13 +46,14 @@ class AnalysisWorker(ABC):
 
     def save_results_to_db(
         self,
-        results: list[AnalysisResult] = [],
+        results: list[AnalysisResult] | None = None,
     ) -> None:
         """Persist analysis results to database.
         
         Args:
             results: List of AnalysisResult instances to save
         """
+        results = results or []
         with get_session() as session:
             repo = AnalysisResultRepository(session)
             try:

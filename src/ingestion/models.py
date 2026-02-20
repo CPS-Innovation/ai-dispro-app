@@ -14,10 +14,10 @@ class TriggerType(str, Enum):
 class IngestionResult:
     """Ingestion result with created entity IDs."""
     success: bool
-    case_ids: list[str] | None = None
-    document_ids: list[str] | None = None
-    version_ids: list[str] | None = None
-    section_ids: list[str] | None = None
+    case_ids: list[int] | None = None
+    document_ids: list[int] | None = None
+    version_ids: list[int] | None = None
+    section_ids: list[int] | None = None
     error: str | None = None
     
     def __post_init__(self):
