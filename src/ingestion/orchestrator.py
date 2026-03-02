@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from tenacity import retry, stop_after_attempt, wait_fixed
-from typing import Any
+from typing import Any, Sequence
 from pathlib import Path
 
 from loguru import logger
@@ -98,12 +98,49 @@ class IngestionOrchestrator:
         
         try:
             # Route to appropriate handler based on trigger type
-            if trigger_type == TriggerType.URN:
-                return await self._ingest_from_urn(value, experiment_id)
+            if trigger_type in [TriggerType.URN, TriggerType.URN_LIST]:
+                cms_client = CMSClient()
+                self._log(
+                    action="CMS_AUTH_REQUEST",
+                    object_type="CMS",
+                    object_id=None,
+                )
+                
+                is_auth_successful = cms_client.authenticate()
+                
+                if not is_auth_successful:
+                    logger.error("CMS authentication failed")
+                    return IngestionResult(
+                        success=False,
+                        error="CMS authentication failed",
+                    )
+
+                self._log(
+                    action="CMS_TOKEN_ISSUED",
+                    object_type="CMS",
+                    object_id=None,
+                )
+
+                if trigger_type == TriggerType.URN:
+                    return await self._ingest_from_urn(value=value, cms_client=cms_client, experiment_id=experiment_id)
+                elif trigger_type == TriggerType.URN_LIST:
+                    overall_result = IngestionResult(success=True)
+                    for urn in value:
+                        result = await self._ingest_from_urn(value=urn.strip(), cms_client=cms_client, experiment_id=experiment_id)
+                        if not result.success:
+                            overall_result.success = False
+                            overall_result.error = f"One or more URNs failed ingestion. Latest error: {result.error}"
+                        else:
+                            overall_result.case_ids.extend(result.case_ids or [])
+                            overall_result.document_ids.extend(result.document_ids or [])
+                            overall_result.version_ids.extend(result.version_ids or [])
+                            overall_result.section_ids.extend(result.section_ids or [])
+                    return overall_result
+            
             elif trigger_type == TriggerType.BLOB_NAME:
-                return await self._ingest_from_blob_name(value, experiment_id)
+                return await self._ingest_from_blob_name(value=value, experiment_id=experiment_id)
             elif trigger_type == TriggerType.FILEPATH:
-                return await self._ingest_from_filepath(value, experiment_id)
+                return await self._ingest_from_filepath(value=value, experiment_id=experiment_id)
             else:
                 return IngestionResult(
                     success=False,
@@ -117,34 +154,12 @@ class IngestionOrchestrator:
     async def _ingest_from_urn(
             self,
             value: str,
+            cms_client: CMSClient,
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from CMS using URN (complete CMS flow)."""
         urn = value
         logger.info("Ingesting from URN: {}", urn)
-        
-        cms_client = CMSClient()
-        
-        self._log(
-            action="CMS_AUTH_REQUEST",
-            object_type="CMS",
-            object_id=None,
-        )
-        
-        is_auth_successful = cms_client.authenticate()
-        
-        if not is_auth_successful:
-            logger.error("CMS authentication failed")
-            return IngestionResult(
-                success=False,
-                error="CMS authentication failed",
-            )
-
-        self._log(
-            action="CMS_TOKEN_ISSUED",
-            object_type="CMS",
-            object_id=None,
-        )
 
         # Get case
         self._log(
@@ -237,7 +252,7 @@ class IngestionOrchestrator:
 
     async def _ingest_from_blob_name(
             self,
-            value: str,
+            value: Sequence[str],
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from blob storage name."""
@@ -270,7 +285,7 @@ class IngestionOrchestrator:
             experiment_id=experiment_id,
         )
         
-        result.case_id = case.id
+        result.case_ids.append(case.id)
         
         return result
 
@@ -513,7 +528,7 @@ class IngestionOrchestrator:
             logger.debug("Poller status: {}", poller.status())
             # Wait for the analysis to complete
             parsing_result: AnalyzeResult = poller.result()
-            return  parsing_result
+            return parsing_result
 
         parsing_result: AnalyzeResult = __parse(doc_intel, content)
         return parsing_result
@@ -561,7 +576,7 @@ class IngestionOrchestrator:
         
         # Convert to list of dicts and validate each
         extracted_sections = __extract(compiled_prompt, llm_client)
-        result= []
+        result = []
         for idx, content in enumerate(extracted_sections):
             is_valid = is_valid_subset(
                 text=context_text,

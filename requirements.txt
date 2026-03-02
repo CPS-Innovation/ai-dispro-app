@@ -3,24 +3,42 @@
 # azure-monitor-opentelemetry 
 
 python-dotenv
-psycopg2-binary
-SQLAlchemy>=2.0
-pydantic
-Jinja2
 loguru
+pydantic
+tenacity
 
-uvicorn[standard]
+# azure sdk core
 azure-common
 azure-core
+
+# azure identity and keyvault
 azure-identity[broker]
 azure-keyvault-secrets
-azure-functions
+
+# postgres
+psycopg2-binary
+SQLAlchemy>=2.0
+
+# azure storage
 azure-storage-blob
-azure-data-tables
+
+# server
+uvicorn[standard]
+azure-functions
+
+# document intelligence
 azure-ai-documentintelligence==1.0.0b4
+
+# LLM inference
 azure-ai-inference
 openai
+Jinja2
+langchain-core>=1.2.7
+langchain>=0.3.3
+langchain-openai>=0.2.2
+langgraph>=1.0.7
 
+# testing
 pytest-cov
 pytest
 pytest-asyncio
