@@ -12,7 +12,7 @@ azure-common
 azure-core
 
 # azure identity and keyvault
-azure-identity[broker]
+azure-identity
 azure-keyvault-secrets
 
 # postgres
@@ -27,7 +27,7 @@ uvicorn[standard]
 azure-functions
 
 # document intelligence
-azure-ai-documentintelligence==1.0.0b4
+azure-ai-documentintelligence>=1.0.0b4
 
 # LLM inference
 azure-ai-inference
@@ -37,8 +37,3 @@ langchain-core>=1.2.7
 langchain>=0.3.3
 langchain-openai>=0.2.2
 langgraph>=1.0.7
-
-# testing
-pytest-cov
-pytest
-pytest-asyncio

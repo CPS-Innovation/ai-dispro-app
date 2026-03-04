@@ -8,7 +8,6 @@ from src.api import (
     ingestion as ingestion_handler,
     analysis as analysis_handler,
     workflow as workflow_handler,
-    setup as setup_handler,
 )
 
 
@@ -148,37 +147,6 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
         value=value,
         experiment_id=experiment_id,
         task_ids=task_ids,
-    )
-
-    return func.HttpResponse(
-        json.dumps(response),
-        status_code=200 if response.get("status") == "success" else 500
-    )
-
-
-@app.function_name(name="setup")
-@app.route(route="setup", methods=[func.HttpMethod.POST])
-async def setup(req: func.HttpRequest) -> func.HttpResponse:
-    """Setup trigger."""
-    logger.info("HTTP trigger: setup")
-
-    try:
-        req_body = req.get_json()
-    except ValueError:
-        return func.HttpResponse(
-            json.dumps({"status": "error", "message": "Invalid JSON body"}),
-            status_code=400
-        )
-
-    response = await setup_handler(
-        tables_to_drop=req_body.get("tables_to_drop", None),
-        tables_to_truncate=req_body.get("tables_to_truncate", None),
-        grantee=req_body.get("grantee", None),
-        tables_to_grant_permission=req_body.get("tables_to_grant_permission", None),
-        sequences_to_grant_permission=req_body.get("sequences_to_grant_permission", None),
-        views_to_grant_permission=req_body.get("views_to_grant_permission", None),
-        create_views=req_body.get("create_views", False),
-        blob_test_upload=req_body.get("blob_test_upload", False),
     )
 
     return func.HttpResponse(
