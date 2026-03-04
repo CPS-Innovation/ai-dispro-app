@@ -113,6 +113,11 @@ $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 $filename = "fa_$timestamp.zip"
 Compress-Archive -Path $files -DestinationPath ".deployment/$filename" -CompressionLevel "Optimal"
 echo "Created zip file: .deployment/$filename"
+
+# Sign in to azure account
+az login
+# Deploy the zip file to Azure Function App
+az functionapp deployment source config-zip --resource-group {RESOURCE_GROUP} --name {FUNCTION_APP_NAME} --src ".deployment/$filename"
 ```
 
 ### Request Examples
