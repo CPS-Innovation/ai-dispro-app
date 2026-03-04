@@ -9,7 +9,7 @@ dotenv.load_dotenv()
 
 
 async def analysis(
-    section_id: str,
+    section_id: int,
     task_ids: list[str] | None = None,
     correlation_id: str | None = None,
 ):
@@ -36,6 +36,6 @@ async def analysis(
         "experiment_id": analysis_job.experiment_id,
         "section_id": section_id,
         "analysis_job_id": analysis_job.id,
-        "task_ids": analysis_job.task_ids,
+        "task_ids":  analysis_job.task_ids.split(",") if analysis_job.task_ids else [],
         "correlation_id": correlation_id,
     }

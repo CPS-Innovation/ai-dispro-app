@@ -15,7 +15,7 @@ class TestWorkflowEndpoint:
         """Test successful workflow with single section."""
         mock_ingestion_result = {
             "status": "success",
-            "section_ids": ["section-1"],
+            "section_ids": [1],
             "experiment_id": "exp-123",
             "correlation_id": None,
             "error": None,

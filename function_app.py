@@ -58,6 +58,7 @@ async def ingestion(req: func.HttpRequest) -> func.HttpResponse:
     trigger_type = req_body.get("trigger_type", 'urn')
     value = req_body.get("value")
     experiment_id = req_body.get("experiment_id", None)
+    correlation_id = req_body.get("correlation_id", None)
 
     if not trigger_type or not value:
         return func.HttpResponse(
@@ -72,6 +73,7 @@ async def ingestion(req: func.HttpRequest) -> func.HttpResponse:
         trigger_type=trigger_type,
         value=value,
         experiment_id=experiment_id,
+        correlation_id=correlation_id,
     )
 
     return func.HttpResponse(
@@ -94,10 +96,11 @@ async def analysis(req: func.HttpRequest) -> func.HttpResponse:
             status_code=400
         )
 
-    section_id = req_body.get("section_id")
+    section_id = req_body.get("section_id", None)
     task_ids = req_body.get("task_ids", None)
+    correlation_id = req_body.get("correlation_id", None)
 
-    if not section_id:
+    if section_id is None:
         return func.HttpResponse(
             json.dumps({
                 "status": "error",
@@ -109,6 +112,7 @@ async def analysis(req: func.HttpRequest) -> func.HttpResponse:
     response = await analysis_handler(
         section_id=section_id,
         task_ids=task_ids,
+        correlation_id=correlation_id,
     )
 
     return func.HttpResponse(
@@ -135,6 +139,7 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
     value = req_body.get("value")
     experiment_id = req_body.get("experiment_id", None)
     task_ids = req_body.get("task_ids", None)
+    correlation_id = req_body.get("correlation_id", None)
 
     if not trigger_type or not value:
         return func.HttpResponse(
@@ -147,6 +152,7 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
         value=value,
         experiment_id=experiment_id,
         task_ids=task_ids,
+        correlation_id=correlation_id,
     )
 
     return func.HttpResponse(

@@ -16,10 +16,6 @@ async def workflow(
 ):
     """Handle end-to-end ingestion and analysis workflow."""
 
-    # Initialize database connection
-    init_session_manager()
-    init_database()
-
     # Perform ingestion
     ingestion_result = await ingestion(
         trigger_type=trigger_type,

@@ -16,7 +16,7 @@ class TestIngestionEndpoint:
         """Test successful document ingestion."""
         mock_result = IngestionResult(
             success=True,
-            section_ids=["section-1", "section-2"],
+            section_ids=[1, 2],
             error=None,
         )
         mock_orchestrator = MagicMock()

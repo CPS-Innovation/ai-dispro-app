@@ -10,12 +10,12 @@ from src.database.migrations import verify_schema
 dotenv.load_dotenv()
 
 async def health(
-        route: Literal['blob', 'postgres', 'llm', 'docintel', 'cms'] | None = None,
+        route: Literal['blob', 'postgres', 'llm', 'docintel', 'keyvault', 'cms'] | None = None,
     ) -> dict:
     """Health check function.
 
     Args:
-        route (str): Specific route to check. Options are 'blob', 'postgres', 'llm', 'docintel', 'cms'.
+        route (str): Specific route to check. Options are 'blob', 'postgres', 'llm', 'docintel', 'keyvault', 'cms'.
 
     Returns:
         dict: Health status information.
