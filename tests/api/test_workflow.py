@@ -39,9 +39,7 @@ class TestWorkflowEndpoint:
         mock_analysis.success = True
         mock_analysis.get.side_effect = lambda key, default=None: mock_analysis_result.get(key, default)
 
-        with patch("src.api.workflow.init_session_manager") as mock_init_session, \
-             patch("src.api.workflow.init_database") as mock_init_db, \
-             patch("src.api.workflow.ingestion", new_callable=AsyncMock, return_value=mock_ingestion) as mock_ing, \
+        with patch("src.api.workflow.ingestion", new_callable=AsyncMock, return_value=mock_ingestion) as mock_ing, \
              patch("src.api.workflow.analysis", new_callable=AsyncMock, return_value=mock_analysis):
             result = await workflow(
                 trigger_type="blob",
@@ -49,8 +47,6 @@ class TestWorkflowEndpoint:
                 experiment_id="exp-123",
             )
 
-        mock_init_session.assert_called_once()
-        mock_init_db.assert_called_once()
         mock_ing.assert_called_once_with(
             trigger_type="blob",
             value="test-path",

@@ -20,7 +20,7 @@ def reset_singleton():
 def test_environment_enum_backward_compatibility():
     """Test that Environment enum values remain stable."""
     assert hasattr(Environment, 'DEVELOPMENT')
-    assert hasattr(Environment, 'TESTING')
+    assert hasattr(Environment, 'STAGING')
     assert hasattr(Environment, 'PRODUCTION')
 
 def test_settings_backward_compatibility():
@@ -41,7 +41,7 @@ def test_settings_backward_compatibility():
     
     # Verify environment methods
     assert callable(settings.is_development)
-    assert callable(settings.is_testing)
+    assert callable(settings.is_staging)
     assert callable(settings.is_production)
 
 
@@ -128,16 +128,16 @@ def test_environment_checks():
         settings.application.environment = Environment.DEVELOPMENT
         assert settings.is_development() is True
         assert settings.is_production() is False
-        assert settings.is_testing() is False
+        assert settings.is_staging() is False
 
-        settings.application.environment = Environment.TESTING
+        settings.application.environment = Environment.STAGING
         assert settings.is_development() is False
-        assert settings.is_testing() is True
+        assert settings.is_staging() is True
         assert settings.is_production() is False
 
         settings.application.environment = Environment.PRODUCTION
         assert settings.is_development() is False
-        assert settings.is_testing() is False
+        assert settings.is_staging() is False
         assert settings.is_production() is True
     finally:
         # Restore original environment

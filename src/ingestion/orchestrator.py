@@ -85,7 +85,7 @@ class IngestionOrchestrator:
     async def ingest(
             self, 
             trigger_type: TriggerType,
-            value: str,
+            value: str | list[str],
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Execute complete ingestion pipeline."""

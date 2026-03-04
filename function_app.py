@@ -27,7 +27,7 @@ async def ping(req: func.HttpRequest) -> func.HttpResponse:
 async def health(req: func.HttpRequest) -> func.HttpResponse:
     """Health check."""
     logger.info("HTTP trigger: health")
-    
+
     response = await health_handler(route=req.params.get("route", None))
     if response["status"] == "success":
         return func.HttpResponse(

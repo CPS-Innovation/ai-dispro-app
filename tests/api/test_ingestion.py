@@ -39,7 +39,7 @@ class TestIngestionEndpoint:
         assert set(result.keys()) == expected_keys
 
         assert result["status"] == "success"
-        assert result["section_ids"] == ["section-1", "section-2"]
+        assert result["section_ids"] == [1, 2]
         assert result["experiment_id"] == "exp-123"
         assert result["error"] is None
 

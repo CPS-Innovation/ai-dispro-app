@@ -15,27 +15,29 @@ async def analysis(
 ):
     """Analyze a content section."""
     
-    # Initialize database connection
-    session_manager = init_session_manager()
+    # Initialize database connection (idempotent setup)
     init_database()
 
-    event_repo = EventRepository(session_manager.get_session())
+    session_manager = init_session_manager()
+    with session_manager.get_session() as session:
 
-    # Perform analysis
-    orchestrator = AnalysisOrchestrator(
-        event_repo=event_repo,
-        correlation_id=correlation_id,
-    )
-    analysis_job: AnalysisJob = orchestrator.analyze_section(
-        section_id=section_id,
-        task_ids=task_ids,
-    )
+        event_repo = EventRepository(session)
 
-    return {
-        "status": "success",
-        "experiment_id": analysis_job.experiment_id,
-        "section_id": section_id,
-        "analysis_job_id": analysis_job.id,
-        "task_ids":  analysis_job.task_ids.split(",") if analysis_job.task_ids else [],
-        "correlation_id": correlation_id,
-    }
+        # Perform analysis
+        orchestrator = AnalysisOrchestrator(
+            event_repo=event_repo,
+            correlation_id=correlation_id,
+        )
+        analysis_job: AnalysisJob = orchestrator.analyze_section(
+            section_id=section_id,
+            task_ids=task_ids,
+        )
+
+        return {
+            "status": "success",
+            "experiment_id": analysis_job.experiment_id,
+            "section_id": section_id,
+            "analysis_job_id": analysis_job.id,
+            "task_ids": analysis_job.task_ids if analysis_job.task_ids else [],
+            "correlation_id": correlation_id,
+        }

@@ -28,27 +28,28 @@ async def ingestion(
             "error": f"Invalid trigger_type: {trigger_type}",
         }
     
-    # Initialize database connection
-    session_manager = init_session_manager()
+    # Initialize database connection (idempotent setup)
     init_database()
 
-    event_repo = EventRepository(session_manager.get_session())
+    session_manager = init_session_manager()
+    with session_manager.get_session() as session:
+        event_repo = EventRepository(session)
 
-    # Perform ingestion
-    orchestrator = IngestionOrchestrator(
-        event_repo=event_repo,
-        correlation_id=correlation_id,
-    )
-    result: IngestionResult = await orchestrator.ingest(
-        trigger_type=trigger_type,
-        value=value,
-        experiment_id=experiment_id,
-    )
+        # Perform ingestion
+        orchestrator = IngestionOrchestrator(
+            event_repo=event_repo,
+            correlation_id=correlation_id,
+        )
+        result: IngestionResult = await orchestrator.ingest(
+            trigger_type=trigger_type,
+            value=value,
+            experiment_id=experiment_id,
+        )
 
-    return {
-        "status": "success" if result.success else "error",
-        "section_ids": result.section_ids,
-        "experiment_id": experiment_id,
-        "correlation_id": correlation_id,
-        "error": result.error,
-    }
+        return {
+            "status": "success" if result.success else "error",
+            "section_ids": result.section_ids,
+            "experiment_id": experiment_id,
+            "correlation_id": correlation_id,
+            "error": result.error,
+        }

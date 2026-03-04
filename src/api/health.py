@@ -72,7 +72,7 @@ async def health(
         try:
             from src.services import get_llm_client
             client = get_llm_client(settings)
-            logger.info("Client: %s", client)
+            logger.info(f"Client: {client}")
             response = client.chat.completions.create(
                 model=settings.ai_foundry.deployment_name,
                 messages=[{"role": "user", "content": "1 + two + tree = ? Be concise."}],
