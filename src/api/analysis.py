@@ -16,10 +16,10 @@ async def analysis(
     """Analyze a content section."""
     
     # Initialize database connection (idempotent setup)
+    session_manager = init_session_manager()
     init_database()
 
-    session_manager = init_session_manager()
-    with session_manager.get_session() as session:
+    with session_manager.session() as session:
 
         event_repo = EventRepository(session)
 

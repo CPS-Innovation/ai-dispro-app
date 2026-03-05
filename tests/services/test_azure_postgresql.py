@@ -113,7 +113,7 @@ class TestConnectionString:
         settings.database.username_secret_name = "db-user"
         settings.azure = Mock(spec=AzureSettings)
         settings.is_development = lambda: settings.application.environment == Environment.DEVELOPMENT
-        settings.is_testing = lambda: settings.application.environment == Environment.TESTING
+        settings.is_staging = lambda: settings.application.environment == Environment.STAGING
         settings.is_production = lambda: settings.application.environment == Environment.PRODUCTION
         return settings
 

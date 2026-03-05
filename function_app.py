@@ -27,7 +27,7 @@ async def ping(req: func.HttpRequest) -> func.HttpResponse:
 async def health(req: func.HttpRequest) -> func.HttpResponse:
     """Health check."""
     logger.info("HTTP trigger: health")
-
+    
     response = await health_handler(route=req.params.get("route", None))
     if response["status"] == "success":
         return func.HttpResponse(
@@ -157,5 +157,5 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(
         json.dumps(response),
-        status_code=200 if response.get("status") == "success" else 500
+        status_code=200 if response.get("status") == "success" else 400
     )

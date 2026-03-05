@@ -8,7 +8,7 @@ dotenv.load_dotenv()
 
 async def workflow(
     trigger_type: str,
-    value: str,
+    value: str | list[str],
     experiment_id: str | None = None,
     task_ids: list[str] | None = None,
     correlation_id: str | None = None,

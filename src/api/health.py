@@ -87,24 +87,20 @@ async def health(
     if route_normalised == "docintel":
         # Test Document Intelligence connection
         try:
-            from pathlib import Path
-            filepath =  Path(__file__).parent.parent.parent / "tests" / "test_empty.pdf"
-            logger.info(f"Filepath: {filepath}")
+            from src.services.azure_docintel import minimal_pdf
+            from src.services import get_docintel_client
             
-            with Path(filepath).open("rb") as fp:
-                doc_bytes = fp.read()
-                
-                from src.services import get_docintel_client
-                client = get_docintel_client(settings)
-                # Create the AnalyzeDocumentRequest
-                poller = client.begin_analyze_document(
-                    model_id="prebuilt-layout",
-                    analyze_request=doc_bytes,
-                    content_type="application/octet-stream",
-                )
-                result = poller.result()
-                logger.info(f"Document Intelligence connection successful, result: {result}")
-                return {"status": "success", "docintel": f"connected (pages: {len(result.pages)})"}
+            doc_bytes = minimal_pdf()
+            client = get_docintel_client(settings)
+            # Create the AnalyzeDocumentRequest
+            poller = client.begin_analyze_document(
+                model_id="prebuilt-layout",
+                analyze_request=doc_bytes,
+                content_type="application/octet-stream",
+            )
+            result = poller.result()
+            logger.info(f"Document Intelligence connection successful, result: {result}")
+            return {"status": "success", "docintel": f"connected (pages: {len(result.pages)})"}
         except Exception as e:
             logger.error(f"Document Intelligence connection failed: {e}")
             return {"status": "error", "docintel": "disconnected", "error": str(e)}
