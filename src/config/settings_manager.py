@@ -11,9 +11,9 @@ from loguru import logger
 class Environment(str, Enum):
     """Application environment."""
 
-    DEVELOPMENT = "development"
-    TESTING = "testing"
-    PRODUCTION = "production"
+    DEVELOPMENT = "dev"
+    STAGING = "stg"
+    PRODUCTION = "prd"
 
 
 @dataclass
@@ -372,9 +372,9 @@ class SettingsManager:
         """Check if current environment is development."""
         return self.application.environment == Environment.DEVELOPMENT
 
-    def is_testing(self) -> bool:
-        """Check if current environment is testing."""
-        return self.application.environment == Environment.TESTING
+    def is_staging(self) -> bool:
+        """Check if current environment is staging."""
+        return self.application.environment == Environment.STAGING
     
     def is_production(self) -> bool:
         """Check if current environment is production."""

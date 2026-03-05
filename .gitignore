@@ -49,3 +49,7 @@ __azurite_db*__.json
 
 # Logs
 logs/
+
+*.csv
+
+.deployment/
