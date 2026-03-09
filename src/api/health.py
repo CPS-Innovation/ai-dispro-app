@@ -91,11 +91,12 @@ async def health(
             from src.services import get_docintel_client
             
             doc_bytes = minimal_pdf()
+            logger.info(f"Testing Document Intelligence with minimal PDF of size {len(doc_bytes)} bytes")
             client = get_docintel_client(settings)
             # Create the AnalyzeDocumentRequest
             poller = client.begin_analyze_document(
                 model_id="prebuilt-layout",
-                analyze_request=doc_bytes,
+                body=doc_bytes,
                 content_type="application/octet-stream",
             )
             result = poller.result()
@@ -119,12 +120,16 @@ async def health(
     
     if route_normalised == "cms":
         # Test CMS connection
-        from src.services.cms_client import CMSClient
-        client = CMSClient()
-        if not client.authenticate():
-             logger.error("Failed to authenticate.")
-             return {"status": "error", "cms": "disconnected", "error": "authentication failed"}
-        return {"status": "success", "cms": "connected (successful authentication)"}
+        try:
+            from src.services.cms_client import CMSClient
+            client = CMSClient()
+            if not client.authenticate():
+                logger.error("Failed to authenticate.")
+                return {"status": "error", "cms": "disconnected", "error": "authentication failed"}
+            return {"status": "success", "cms": "connected (successful authentication)"}
+        except Exception as e:
+            logger.error(f"CMS connection failed: {e}")
+            return {"status": "error", "cms": "disconnected", "error": str(e)}
 
     logger.warning(f"Unknown health check route: {route_normalised}")
     return {"status": "error", "error": f"Unknown route: {route_normalised}"}
