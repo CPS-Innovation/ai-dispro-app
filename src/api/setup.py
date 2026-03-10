@@ -19,7 +19,7 @@ dotenv.load_dotenv()
 
 
 async def setup(
-        views: list[dict] | None = None,
+        views: list[str] | None = None,
         prompt_templates: list[dict] | None = None,
 ) -> dict:
     """Setup function to verify database schema and other initial checks."""
@@ -29,7 +29,7 @@ async def setup(
     # Verify schema before initialization (in case of missing tables, etc.)
     verification = verify_schema(session_manager) # verify schema
     if verification["status"] != "ok":
-        logger.warning("Schema verification:", json.dumps(verification, indent=2))
+        logger.warning(f"Schema verification: {json.dumps(verification, indent=2)}")
 
     # Create missing tables (if any)
     logger.info("Creating missing tables... (if any)")
@@ -37,7 +37,7 @@ async def setup(
     logger.info("Verifying schema after initialization...")
     verification = verify_schema(session_manager)
     if verification["status"] != "ok":
-        logger.warning("Schema verification after init:", json.dumps(verification, indent=2))
+        logger.warning(f"Schema verification after init: {json.dumps(verification, indent=2)}")
     else:
         logger.info("Schema verification after init: OK")
 
@@ -47,10 +47,8 @@ async def setup(
         logger.info(t)
 
     # Final schema verification
-    verification = verify_schema(session_manager) # verify schema
-    response = { 
-        "status": "success",
-        "verification": verification,
+    response = {
+        "verification": verify_schema(session_manager) # verify schema
     }
 
     # Create views if specified
@@ -72,7 +70,7 @@ async def setup(
     # Upload prompt templates if specified
     if prompt_templates is not None:
         logger.info(f"Upserting {len(prompt_templates)} prompt templates...")
-        response['prompt_templates'] = {"upserted": [], "error": []}
+        response['prompt_templates'] = {"upserted": [], "errors": []}
         with session_manager.get_session() as session:
             prompt_repo = PromptTemplateRepository(session)
             for idx, pt in enumerate(prompt_templates):

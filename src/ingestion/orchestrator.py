@@ -219,9 +219,11 @@ class IngestionOrchestrator:
             elif doc_data["type"] not in self.supportedDocTypes:
                 logger.debug("Skipping '{}'. Reason: non-MG3 document {}", doc_data.get("originalFileName"), doc_data.get("id"))
                 continue
-            elif doc_data["mimeType"] not in self.supportedMimeTypes:
+            
+            if doc_data["mimeType"] not in self.supportedMimeTypes:
                 logger.debug("Skipping '{}'. Reason: unsupported mime type document {}", doc_data.get("originalFileName"), doc_data.get("id"))
                 continue
+            
             selected_documents_data.append(doc_data)
             # Get raw documents from CMS
             self._log(

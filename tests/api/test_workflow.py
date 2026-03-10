@@ -54,12 +54,12 @@ class TestWorkflowEndpoint:
             correlation_id=None,
         )
 
-        expected_keys = {"status", "experiment_id", "sections", "analysis_job_ids", "correlation_id"}
+        expected_keys = {"status", "experiment_id", "section_ids", "analysis_job_ids", "correlation_id"}
         assert set(result.keys()) == expected_keys
 
         assert result["status"] == "success"
         assert result["experiment_id"] == "exp-123"
-        assert len(result["sections"]) == 1
+        assert len(result["section_ids"]) == 1
         assert len(result["analysis_job_ids"]) == 1
 
 

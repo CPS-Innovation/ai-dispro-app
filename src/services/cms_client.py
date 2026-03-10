@@ -169,6 +169,7 @@ class CMSClient:
             if defendants:
                 ans = []
                 for defendant in defendants:
+
                     defendant_data = {
                         "id": defendant.get("id"),
                         "case_id": case_id,
@@ -176,9 +177,14 @@ class CMSClient:
                         "youth": defendant.get("youth", None),
                         "ethnicity": defendant.get("personalDetail", {}).get("ethnicity", None),
                         "gender": defendant.get("personalDetail", {}).get("gender", None),
+                        "pcd_review_decision": None,
                         "charges": [],
                         "offences": [],
                     }
+                    defendantPcdReview = defendant.get("defendantPcdReview", None)
+                    if defendantPcdReview:
+                        defendant_data["pcd_review_decision"] = defendantPcdReview.get("reviewDecision", None) 
+                    
                     if include_charges:
                         charges = defendant.get("charges", [])
                         if len(charges) == 0:
@@ -190,6 +196,8 @@ class CMSClient:
                                 "code": charge.get("code"),
                                 "description": charge.get("description"),
                                 "latest_verdict": charge.get("latestVerdict", None),
+                                "from_date": charge.get("fromDate", None),
+                                "to_date": charge.get("toDate", None),
                             }
                             defendant_data["charges"].append(charge_data)
                     if include_offences:
@@ -202,6 +210,8 @@ class CMSClient:
                                 "code": offence.get("code"),
                                 "description": offence.get("description"),
                                 "active": offence.get("active", None),
+                                "from_date": offence.get("fromDate", None),
+                                "to_date": offence.get("toDate", None),
                             }
                             defendant_data["offences"].append(offence_data)
                     ans.append(defendant_data)

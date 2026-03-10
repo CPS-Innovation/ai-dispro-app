@@ -25,9 +25,11 @@ class Charge(Base):
         Integer, ForeignKey(f"{_settings.storage.table_name_defendants}.id"), nullable=False, index=True
     )
 
-    code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    code: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    latest_verdict: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    from_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    to_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    latest_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships

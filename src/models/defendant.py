@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Integer, Boolean
+from sqlalchemy import Date, DateTime, ForeignKey, String, Integer, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -32,6 +32,7 @@ class Defendant(Base):
     youth: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
     ethnicity: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    pcd_review_decision: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships

@@ -14,7 +14,9 @@ from src.api.setup import setup, validate_create_view_ddl
 async def test_setup_with_views(views):
     """Setup returns success when schema verification passes."""
     result = await setup(views=views)
-    assert result["status"] == "success"
+    if views is not None:
+        assert "views" in result
+        assert result["views"]["upserted"] == len(views)
 
 
 @pytest.mark.asyncio
@@ -27,8 +29,7 @@ async def test_setup_with_views(views):
 ])
 async def test_setup_defend_db(views):
     """Setup returns success when schema verification passes."""
-    result = await setup(views=views)
-    assert result["status"] == "success"
+    await setup(views=views)
     with pytest.raises(ValueError):
         await setup(views=['DROP TABLE IF EXISTS test_view;'])
 
@@ -51,8 +52,6 @@ async def test_setup_defend_db(views):
 async def test_setup_with_prompt_templates(prompt_templates):
     """Setup returns success when schema verification passes and prompt templates are uploaded."""
     result = await setup(prompt_templates=prompt_templates)
-
-    assert result["status"] == "success"
     if prompt_templates is not None:
         assert "prompt_templates" in result
         assert len(result["prompt_templates"]["upserted"]) == len(prompt_templates)
