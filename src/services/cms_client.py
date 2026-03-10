@@ -178,12 +178,14 @@ class CMSClient:
                         "ethnicity": defendant.get("personalDetail", {}).get("ethnicity", None),
                         "gender": defendant.get("personalDetail", {}).get("gender", None),
                         "pcd_review_decision": None,
+                        "pcd_case_consultation_type": None,
                         "charges": [],
                         "offences": [],
                     }
-                    defendantPcdReview = defendant.get("defendantPcdReview", None)
-                    if defendantPcdReview:
-                        defendant_data["pcd_review_decision"] = defendantPcdReview.get("reviewDecision", None) 
+                    defendant_pcd_review  = defendant.get("defendantPcdReview", None)
+                    if defendant_pcd_review :
+                        defendant_data["pcd_review_decision"] = defendant_pcd_review .get("reviewDecision", None)
+                        defendant_data["pcd_case_consultation_type"] = defendant_pcd_review .get("caseConsultationType", None)
                     
                     if include_charges:
                         charges = defendant.get("charges", [])

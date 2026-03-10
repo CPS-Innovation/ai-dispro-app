@@ -20,7 +20,7 @@ def test_prompt_template_repository(db_session):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("template", [
-    "This is a template with a input: {{ variable_name }}",
+    "This is a template with an input: {{ variable_name }}",
 ])
 def test_prompt_template_syntax(template):
     """Test PromptTemplate repository create."""

@@ -30,7 +30,7 @@ class TestWorkflowEndpoint:
             "status": "success",
             "experiment_id": "exp-123",
             "correlation_id": None,
-            "section_ids": "section-1",
+            "section_ids": ["section-1"],
             "analysis_job_id": "job-1",
             "tasks": [],
             "success": True,

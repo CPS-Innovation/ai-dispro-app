@@ -64,6 +64,7 @@ async def setup(
                     logger.info(f"Upserted view {idx}: {ddl}")
                     response['views']['upserted'] += 1
                 except Exception as e:
+                    session.rollback()
                     logger.error(f"Error Upserting view {idx}: {e}")
                     response['views']['errors'].append(f"View {idx}: {e}")
 
@@ -80,6 +81,7 @@ async def setup(
                     logger.info(f"Upserted prompt template {idx}: {pt_obj.id}")
                     response['prompt_templates']['upserted'].append(pt_obj.id)
                 except Exception as e:
+                    session.rollback()
                     logger.error(f"Error Upserting prompt template {idx}: {e}")
                     response['prompt_templates']['errors'].append(pt.get('name', 'unknown') + ": " + str(e))
 

@@ -32,6 +32,7 @@ class Defendant(Base):
     youth: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
     ethnicity: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    pcd_case_consultation_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     pcd_review_decision: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
