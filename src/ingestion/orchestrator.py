@@ -169,38 +169,61 @@ class IngestionOrchestrator:
         )
 
         case_id = cms_client.get_case_id_from_urn(urn)
+        if case_id is None:
+            logger.error("No case found for URN: {}", urn)
+            return IngestionResult(
+                success=False,
+                error=f"No case found for URN: {urn}",
+            )
         case_data = {
             "urn": urn,
             "id": case_id,
         }   
-        logger.debug("Retrieved case ID {} for URN {}", case_id, urn)
+        logger.debug("Retrieved case ID for URN {}: {} ", urn, case_id)
+
         
         # Get case summary         
         case_summary = cms_client.get_case_summary(case_id)
-        if case_summary:
-            case_data["finalised"] = case_summary.get("finalised", None)
-            case_data["area_id"] = case_summary.get("areaId", None)
-            case_data["area_name"] = case_summary.get("areaName", None)
-            case_data["unit_id"] = case_summary.get("unitId", None)
-            case_data["unit_name"] = case_summary.get("unitName", None)
-            case_data["registration_date"] = case_summary.get("registrationDate", None)
-        logger.debug("Case info retrieved: case_id={}", case_id)
+        if case_summary is None:
+            logger.error("No case summary found for URN: {} case ID: {}", urn, case_id)
+            return IngestionResult(
+                success=False,
+                error=f"No case summary found for URN: {urn} case ID: {case_id}",
+            )        
+        
+        case_data["finalised"] = case_summary.get("finalised", None)
+        case_data["area_id"] = case_summary.get("areaId", None)
+        case_data["area_name"] = case_summary.get("areaName", None)
+        case_data["unit_id"] = case_summary.get("unitId", None)
+        case_data["unit_name"] = case_summary.get("unitName", None)
+        case_data["registration_date"] = case_summary.get("registrationDate", None)
+        logger.debug("Case info retrieved: URN={}, case_id={}", urn, case_id)
 
         # Get raw documents from CMS
         documents_data = cms_client.list_case_documents(case_id=case_id)
+        if documents_data is None:
+            logger.warning("No documents found for URN: {} case ID: {}", urn, case_id)
         logger.debug("Case {} has {} documents", case_id, len(documents_data) if documents_data else 0)
         selected_documents_data = []
         for doc_idx, doc_data in enumerate(documents_data or []):
             logger.debug("Document {}: {} ({}:{})", doc_idx, doc_data.get("originalFileName"), doc_data.get("cmsDocCategory"), doc_data.get("type"))
-            if doc_data["cmsDocCategory"] not in self.supportedCMSDocCategories:
+            if (
+                'MG3' in doc_data.get("presentationTitle", '').upper()
+                or 
+                'MG3' in doc_data.get("originalFileName", '').upper()
+            ):
+                pass  # accept by name
+            elif doc_data["cmsDocCategory"] not in self.supportedCMSDocCategories:
                 logger.debug("Skipping '{}'. Reason: non-MGForm document {}", doc_data.get("originalFileName"), doc_data.get("id"))
                 continue
-            if doc_data["type"] not in self.supportedDocTypes:
+            elif doc_data["type"] not in self.supportedDocTypes:
                 logger.debug("Skipping '{}'. Reason: non-MG3 document {}", doc_data.get("originalFileName"), doc_data.get("id"))
                 continue
+            
             if doc_data["mimeType"] not in self.supportedMimeTypes:
                 logger.debug("Skipping '{}'. Reason: unsupported mime type document {}", doc_data.get("originalFileName"), doc_data.get("id"))
                 continue
+            
             selected_documents_data.append(doc_data)
             # Get raw documents from CMS
             self._log(
@@ -216,10 +239,10 @@ class IngestionOrchestrator:
             doc_data["data"] = document_data
 
         if not selected_documents_data:
-            logger.warning("No document selected for case {}", case_id)
+            logger.warning("No document selected for URN: {}, case ID: {}", urn, case_id)
             return IngestionResult(
                 success=False,
-                error=f"No document selected for case {case_id}",
+                error=f"No document selected for URN: {urn}, case ID: {case_id}",
             )
         
         logger.debug(
@@ -521,7 +544,7 @@ class IngestionOrchestrator:
             """Parse document using Azure Document Intelligence."""
             poller: AnalyzeDocumentLROPoller = doc_intel.begin_analyze_document(
                 model_id="prebuilt-layout",
-                analyze_request=content,
+                body=content,
                 content_type="application/octet-stream",
                 # try content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )

@@ -69,7 +69,7 @@ class TestAnalysisIntegration:
         settings = SettingsManager.get_instance()
         result = await analysis(
             section_id=settings.test.section_id,
-            task_ids=['theme1-appropriateness'],
+            task_ids=['combined-fact-based'],
         )
 
         assert result["status"] == "success"

@@ -8,6 +8,7 @@ from src.api import (
     ingestion as ingestion_handler,
     analysis as analysis_handler,
     workflow as workflow_handler,
+    setup as setup_handler,
 )
 
 
@@ -158,4 +159,29 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(
         json.dumps(response),
         status_code=200 if response.get("status") == "success" else 400
+    )
+
+
+@app.function_name(name="setup")
+@app.route(route="setup", methods=[func.HttpMethod.POST])
+async def setup(req: func.HttpRequest) -> func.HttpResponse:
+    """Setup trigger."""
+    logger.info("HTTP trigger: setup")
+
+    try:
+        req_body = req.get_json()
+    except ValueError:
+        return func.HttpResponse(
+            json.dumps({"status": "error", "message": "Invalid JSON body"}),
+            status_code=400
+        )
+
+    response = await setup_handler(
+        views=req_body.get("views", None),
+        prompt_templates=req_body.get("prompt_templates", None),
+    )
+
+    return func.HttpResponse(
+        json.dumps(response),
+        status_code=200 if response.get("status") == "success" else 500
     )

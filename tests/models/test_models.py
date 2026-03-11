@@ -102,7 +102,7 @@ def test_create_charge(db_session):
     charge = Charge(
         defendant_id=defendant.id,
         description="Theft",
-        latest_verdict=datetime(2024, 6, 1),
+        latest_verdict="Guilty",
     )
     db_session.add(charge)
     db_session.commit()

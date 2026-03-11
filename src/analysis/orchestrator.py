@@ -262,7 +262,7 @@ class AnalysisOrchestrator:
         """Log."""
         if self.event_repo:
             self.event_repo.log(
-                event_type=event_type or "ANALYSIS_ORCHESTRATION",
+                event_type=event_type or "ANALYSIS",
                 actor_id=actor_id or "ANALYSIS_ORCHESTRATOR",
                 action=action,
                 object_type=object_type,

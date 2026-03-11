@@ -16,7 +16,7 @@ def test_begin_analyze_document():
         client = get_docintel_client(settings)
         poller = client.begin_analyze_document(
             model_id="prebuilt-layout",
-            analyze_request=doc_bytes,
+            body=doc_bytes,
             content_type="application/octet-stream",
         )
         result = poller.result()
@@ -32,7 +32,7 @@ def test_begin_analyze_document_with_bytes():
     client = get_docintel_client(settings)
     poller = client.begin_analyze_document(
         model_id="prebuilt-layout",
-        analyze_request=doc_bytes,
+        body=doc_bytes,
         content_type="application/octet-stream",
     )
     result = poller.result()

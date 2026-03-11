@@ -30,6 +30,8 @@ class Offence(Base):
     type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     active: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    from_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    to_date: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships

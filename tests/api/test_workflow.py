@@ -30,7 +30,7 @@ class TestWorkflowEndpoint:
             "status": "success",
             "experiment_id": "exp-123",
             "correlation_id": None,
-            "section_id": "section-1",
+            "section_ids": ["section-1"],
             "analysis_job_id": "job-1",
             "tasks": [],
             "success": True,
@@ -42,24 +42,24 @@ class TestWorkflowEndpoint:
         with patch("src.api.workflow.ingestion", new_callable=AsyncMock, return_value=mock_ingestion) as mock_ing, \
              patch("src.api.workflow.analysis", new_callable=AsyncMock, return_value=mock_analysis):
             result = await workflow(
-                trigger_type="blob",
+                trigger_type="blob_name",
                 value="test-path",
                 experiment_id="exp-123",
             )
 
         mock_ing.assert_called_once_with(
-            trigger_type="blob",
+            trigger_type="blob_name",
             value="test-path",
             experiment_id="exp-123",
             correlation_id=None,
         )
 
-        expected_keys = {"status", "experiment_id", "sections", "analysis_job_ids", "correlation_id"}
+        expected_keys = {"status", "experiment_id", "section_ids", "analysis_job_ids", "correlation_id"}
         assert set(result.keys()) == expected_keys
 
         assert result["status"] == "success"
         assert result["experiment_id"] == "exp-123"
-        assert len(result["sections"]) == 1
+        assert len(result["section_ids"]) == 1
         assert len(result["analysis_job_ids"]) == 1
 
 
@@ -68,7 +68,7 @@ class TestWorkflowIntegration:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_workflow(self):
+    async def test_workflow_success(self):
         from src.config.settings_manager import SettingsManager
         settings = SettingsManager.get_instance()
         result = await workflow(
@@ -80,5 +80,20 @@ class TestWorkflowIntegration:
         )
 
         assert result["status"] == "success"
-        assert len(result["sections"]) > 0
+        assert len(result["section_ids"]) > 0
         assert len(result["analysis_job_ids"]) > 0
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_workflow_error(self):
+        result = await workflow(
+            trigger_type="urn",
+            value='invalid',
+            experiment_id="TST-EXP-API-Workflow-BLOB_NAME",
+            task_ids=['theme1-appropriateness'],
+            correlation_id="TST-CORR-API-Workflow-BLOB_NAME",
+        )
+
+        assert result["status"] == "error"
+        assert len(result["error"]) > 0

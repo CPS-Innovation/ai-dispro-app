@@ -44,6 +44,6 @@ async def workflow(
         "status": "success",
         "experiment_id": experiment_id,
         "correlation_id": correlation_id,
-        "sections": section_ids,
+        "section_ids": section_ids,
         "analysis_job_ids": [res.get("analysis_job_id") for res in analysis_results],
     }
