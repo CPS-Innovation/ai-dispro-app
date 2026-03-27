@@ -123,8 +123,8 @@ class TestSettings(Settings):
     filepath: str = ""
     section_content: str = ""
     experiment_id: str = ""
-    version_id: str = ""
-    section_id: str = ""
+    version_id: Optional[int] = None
+    section_id: Optional[int] = None
     theme: str = ""
     pattern: str = ""
 

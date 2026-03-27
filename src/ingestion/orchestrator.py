@@ -196,23 +196,21 @@ class IngestionOrchestrator:
         )
 
         # Get defendants and charges from CMS
-        self._log(
+        with self._log_step(
             action="mds_case_defendants_request",
             object_type="case",
             object_id=case_id,
             experiment_id=experiment_id,
-        )
-        defendants_data = cms_client.get_case_defendants(
-            case_id=case_id,
-            include_charges=True,
-            include_offences=True,
-        )
-        self._log(
-            action=f"mds_case_defendants_{'success' if defendants_data is not None else 'failure'}",
-            object_type="case",
-            object_id=case_id,
-            experiment_id=experiment_id,
-        )
+        ):
+            defendants_data = cms_client.get_case_defendants(
+                case_id=case_id,
+                include_charges=True,
+                include_offences=True,
+            )
+            if defendants_data is None:
+                logger.error(f"URN {urn} Case {case_id}: Failed to retrieve defendants data")
+                raise Exception(f"URN {urn} Case {case_id}: Failed to retrieve defendants data")
+        
         logger.debug(f"URN {urn} Case {case_id}: Number of defendants: {len(defendants_data)}")
         for def_idx, def_data in enumerate(defendants_data):
             charges = def_data.get("charges", [])

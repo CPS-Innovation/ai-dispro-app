@@ -43,8 +43,9 @@ class SessionManager:
     def create_all(self):
         """Create all tables in the database."""
         schema = SettingsManager.get_instance().database.schema
+        quoted_schema = self._engine.dialect.identifier_preparer.quote(schema)
         with self._engine.connect() as conn:
-            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema}"))
             conn.commit()
         Base.metadata.create_all(self._engine)
 

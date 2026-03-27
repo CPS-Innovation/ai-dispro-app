@@ -83,7 +83,7 @@ class AnalysisOrchestrator:
         )
         # convert bytes to dict
         parsing_result = json.loads(parsing_result.decode("utf-8"))
-        result.version_ids = [version_id]
+        result.version_id = version_id
         self._log(
             event_type="extraction",
             action="version_load_end",

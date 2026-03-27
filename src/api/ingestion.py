@@ -11,7 +11,7 @@ dotenv.load_dotenv()
 
 async def ingestion(
     trigger_type: Literal[TriggerType.BLOB_NAME, TriggerType.FILEPATH, TriggerType.URN],
-    value: str | list[str],
+    value: str,
     experiment_id: str | None = None,
     correlation_id: str | None = None,
 ):

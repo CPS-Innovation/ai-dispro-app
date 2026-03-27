@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from loguru import logger
 
@@ -17,7 +18,7 @@ SUPPORTED_MIME_TYPES: list[str] = [
 ]
 
 def is_document_supported(
-        raw_doc_data: dict[str, any],
+        raw_doc_data: dict[str, Any],
     ) -> bool:
     """Check if document is supported based on category, type and mime type."""
     ans = False

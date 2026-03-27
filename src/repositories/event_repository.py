@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from ..models import Event
@@ -22,7 +24,7 @@ class EventRepository(BaseRepository[Event]):
         experiment_id: str | None = None,
         correlation_id: str | None = None,
         source: str | None = DEFAULT_SOURCE,
-        created_at: str | None = None
+        created_at: datetime | None = None
         ) -> Event:
         """Logs an event to the database."""
         return self.create(

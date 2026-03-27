@@ -52,7 +52,11 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
                 raise ValueError("Multiple prompt templates found with the same unique fields")
             existing = prompt_templates[0]
             logger.info(f"Existing prompt template found with ID {existing.id}, updating it")
-            self.update(id_value=existing.id, template=template)
+            self.update(
+                id_value=existing.id,
+                template=template,
+                linguistic_standard=linguistic_standard,
+            )
             return existing
 
         logger.info("No existing prompt template found, creating a new one")
