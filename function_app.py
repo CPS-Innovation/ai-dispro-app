@@ -12,7 +12,7 @@ from src.api import (
 )
 
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
 
 @app.function_name(name="ping")
@@ -97,28 +97,30 @@ async def analysis(req: func.HttpRequest) -> func.HttpResponse:
             status_code=400
         )
 
-    section_id = req_body.get("section_id", None)
+    section_ids = req_body.get("section_ids", None)
+    version_ids = req_body.get("version_ids", None)
     task_ids = req_body.get("task_ids", None)
     correlation_id = req_body.get("correlation_id", None)
 
-    if section_id is None:
+    if section_ids is None and version_ids is None:
         return func.HttpResponse(
             json.dumps({
                 "status": "error",
-                "message": "Missing required parameters, section_id is required",
+                "message": "Missing required parameters, section_ids or version_ids is required",
             }),
             status_code=400
         )
 
-    response = await analysis_handler(
-        section_id=section_id,
+    results = await analysis_handler(
+        section_ids=section_ids,
         task_ids=task_ids,
+        version_ids=version_ids,
         correlation_id=correlation_id,
     )
 
     return func.HttpResponse(
-        json.dumps(response),
-        status_code=200 if response.get("status") == "success" else 500
+        json.dumps(results),
+        status_code=200 if len(results) > 0 else 500
     )
 
 
@@ -155,7 +157,7 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
         task_ids=task_ids,
         correlation_id=correlation_id,
     )
-
+    
     return func.HttpResponse(
         json.dumps(response),
         status_code=200 if response.get("status") == "success" else 400
