@@ -138,7 +138,7 @@ class LangGraphWorker(AnalysisWorker):
                     rewritten_phrase=result_data.get("rewritten_phrase"),
                     rewritten_explanation=result_data.get("rewritten_explanation"),
                     defence_verdict=result_data.get("defence_verdict"),
-                    defence_pattern=result_data.get("defence_pattern"),
+                    defence_pattern=str(result_data.get("defence_pattern", "")).lower(),
                     defence_argument=result_data.get("defence_argument"),
                     reviewer_final_verdict=result_data.get("reviewer_final_verdict"),
                     reviewer_confidence_score=float(result_data.get("reviewer_confidence_score", 0.0)),

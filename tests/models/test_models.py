@@ -33,7 +33,7 @@ def test_create_case(db_session):
         finalised=False,
         area_id=1,
         unit_id=1,
-        registration_date=date(2024, 1, 1),
+        registration_date="2024-01-01",
     )
     db_session.add(case)
     db_session.commit()

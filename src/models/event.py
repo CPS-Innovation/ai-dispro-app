@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..config import SettingsManager
@@ -17,13 +17,14 @@ class Event(Base):
     # Primary key
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, index=True)
 
-    source: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    event_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    actor_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    action: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    object_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    object_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    correlation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    event_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    object_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    object_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    experiment_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    correlation_id: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 

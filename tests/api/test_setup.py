@@ -1,6 +1,7 @@
 import pytest
 
 from src.api.setup import setup, validate_create_view_ddl
+from sqlalchemy import text
 
 
 @pytest.mark.asyncio
@@ -61,17 +62,18 @@ async def test_setup_with_prompt_templates(prompt_templates):
 @pytest.mark.parametrize("ddl, should_pass", [
     ("CREATE VIEW test_view AS SELECT 1;", True),
     ("CREATE OR REPLACE VIEW test_view AS SELECT 1;", True),
-    ("CREATE TABLE test_table (id INT);", False),
-    ("DROP VIEW test_view;", False),
     ("-- Comment\nCREATE OR REPLACE VIEW test_view AS SELECT 1;", True),
     ("/* Multi-line\nComment */\nCREATE OR REPLACE VIEW test_view AS SELECT 1;", True),
     ("CREATE OR REPLACE VIEW test_view AS SELECT 1; -- Inline comment", True),
+    ("CREATE TABLE test_table (id INT);", False),
+    ("DROP VIEW test_view;", False),
 ])
-def test_validate_create_view_ddl(ddl, should_pass):
+def test_validate_create_view_ddl(ddl, should_pass, db_session):
     """Test that validate_create_view_ddl correctly validates DDL statements."""
     if should_pass:
         # Should not raise an exception
         validate_create_view_ddl(ddl)
+        db_session.execute(text('DROP VIEW test_view;'))
     else:
         with pytest.raises(ValueError):
             validate_create_view_ddl(ddl)

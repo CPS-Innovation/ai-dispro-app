@@ -135,15 +135,13 @@ class CMSClient:
         """Get case summary information for a given case ID."""
         url = f"{self.base_url}/cases/{case_id}/summary"
         headers = self._get_headers()
-        keys = ["urn", "finalised", "registrationDate", "areaId", "areaName", "unitId", "unitName"]
 
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
+            summary = response.json()
 
-            data = response.json()
-            response_data = {key: data.get(key, None) for key in keys}
-            return response_data
+            return summary
 
         except requests.exceptions.RequestException as e:
             logger.warning(f"Failed to get case finalised status: {e}")
@@ -172,20 +170,23 @@ class CMSClient:
 
                     defendant_data = {
                         "id": defendant.get("id"),
-                        "case_id": case_id,
+                        "case_id": defendant.get("caseId"),
                         "dob": defendant.get("dob", None),
                         "youth": defendant.get("youth", None),
                         "ethnicity": defendant.get("personalDetail", {}).get("ethnicity", None),
                         "gender": defendant.get("personalDetail", {}).get("gender", None),
+                        "list_order": defendant.get("listOrder", None),
                         "pcd_review_decision": None,
                         "pcd_case_consultation_type": None,
+                        "pcd_principal_offence_code": None,
                         "charges": [],
                         "offences": [],
                     }
-                    defendant_pcd_review  = defendant.get("defendantPcdReview", None)
+                    defendant_pcd_review = defendant.get("defendantPcdReview", None)
                     if defendant_pcd_review :
                         defendant_data["pcd_review_decision"] = defendant_pcd_review .get("reviewDecision", None)
                         defendant_data["pcd_case_consultation_type"] = defendant_pcd_review .get("caseConsultationType", None)
+                        defendant_data["pcd_principal_offence_code"] = defendant_pcd_review .get("principalOffenceCode", None)
                     
                     if include_charges:
                         charges = defendant.get("charges", [])
@@ -217,7 +218,7 @@ class CMSClient:
                             }
                             defendant_data["offences"].append(offence_data)
                     ans.append(defendant_data)
-                logger.info(f"Found metadata for case ID: {case_id}")
+                logger.info(f"Case {case_id}: {len(defendants)} defendants, (offences,charges) per defendant: {[(len(d['offences']), len(d['charges'])) for d in ans]}")
                 return ans
             logger.warning("No defendants found in response")
             return None

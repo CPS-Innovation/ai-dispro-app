@@ -19,8 +19,10 @@ class EventRepository(BaseRepository[Event]):
         action: str,
         object_type: str,
         object_id: str | None = None,
+        experiment_id: str | None = None,
         correlation_id: str | None = None,
         source: str | None = DEFAULT_SOURCE,
+        created_at: str | None = None
         ) -> Event:
         """Logs an event to the database."""
         return self.create(
@@ -30,5 +32,7 @@ class EventRepository(BaseRepository[Event]):
             action=action,
             object_type=object_type,
             object_id=object_id,
+            experiment_id=experiment_id,
             correlation_id=correlation_id,
+            created_at=created_at
         )

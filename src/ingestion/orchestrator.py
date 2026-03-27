@@ -1,15 +1,13 @@
 import json
 import uuid
 from datetime import datetime, timezone
+from typing import Any
+from pathlib import Path
+from contextlib import contextmanager
 
 from tenacity import retry, stop_after_attempt, wait_fixed
-from typing import Any, Sequence
-from pathlib import Path
-
 from loguru import logger
-from openai import AzureOpenAI
-from pydantic import BaseModel
-from jinja2 import Environment
+
 from azure.ai.documentintelligence import (  # type: ignore[import]
     AnalyzeDocumentLROPoller,
     DocumentIntelligenceClient,
@@ -26,50 +24,31 @@ from ..repositories import (
     OffenceRepository,
     DocumentRepository,
     VersionRepository,
-    ExperimentRepository,
-    SectionRepository,
-    PromptTemplateRepository,
     EventRepository,
 )
 from ..models import (
     Case,
     Defendant,
-    Charge,
-    Offence,
     Document,
     Version,
-    Experiment,
-    Section,
 )
 from ..services import (
     CMSClient,
     get_docintel_client,
     load_blob,
     save_blob,
-    get_llm_client,
 )
 from .models import IngestionResult, TriggerType
-from .utils import is_valid_subset
-
+from .utils import is_document_supported
 
 class IngestionOrchestrator:
     """Orchestrates the ingestion pipeline."""
 
-    supportedCMSDocCategories: list[str] = [
-        "Review",
-        "MGForm",
-    ]
-    supportedDocTypes: list[str] = [
-        "MG 3",
-        "MG3",
-        "MG3 (with Schedule of Charges)",
-    ]
-    supportedMimeTypes: list[str] = [
-        "application/pdf", # .pdf
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',  # .docx
-    ]
+
+    settings: SettingsManager
     event_repo: EventRepository | None
     correlation_id: str | None
+    doc_intel: DocumentIntelligenceClient | None
 
     def __init__(
             self,
@@ -80,6 +59,7 @@ class IngestionOrchestrator:
         self.settings = SettingsManager.get_instance()
         self.event_repo = event_repo
         self.correlation_id = correlation_id
+        self.doc_intel = get_docintel_client()
         logger.info("Ingestion orchestrator initialized")
 
     async def ingest(
@@ -89,180 +69,155 @@ class IngestionOrchestrator:
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Execute complete ingestion pipeline."""
-        logger.info(
-            "Starting ingestion: trigger_type={}, value={}, experiment_id={}",
-            trigger_type,
-            value,
-            experiment_id,
-        )
+        logger.info(f"Starting ingestion: trigger_type={trigger_type}, value={value}, experiment_id={experiment_id}")
         
-        try:
-            # Route to appropriate handler based on trigger type
-            if trigger_type in [TriggerType.URN, TriggerType.URN_LIST]:
-                cms_client = CMSClient()
-                self._log(
-                    action="CMS_AUTH_REQUEST",
-                    object_type="CMS",
-                    object_id=None,
-                )
-                
-                is_auth_successful = cms_client.authenticate()
-                
-                if not is_auth_successful:
-                    logger.error("CMS authentication failed")
-                    return IngestionResult(
-                        success=False,
-                        error="CMS authentication failed",
-                    )
-
-                self._log(
-                    action="CMS_TOKEN_ISSUED",
-                    object_type="CMS",
-                    object_id=None,
-                )
-
-                if trigger_type == TriggerType.URN:
-                    return await self._ingest_from_urn(value=value, cms_client=cms_client, experiment_id=experiment_id)
-                elif trigger_type == TriggerType.URN_LIST:
-                    overall_result = IngestionResult(success=True)
-                    for urn in value:
-                        result = await self._ingest_from_urn(value=urn.strip(), cms_client=cms_client, experiment_id=experiment_id)
-                        if not result.success:
-                            overall_result.success = False
-                            overall_result.error = f"One or more URNs failed ingestion. Latest error: {result.error}"
-                        else:
-                            overall_result.case_ids.extend(result.case_ids or [])
-                            overall_result.document_ids.extend(result.document_ids or [])
-                            overall_result.version_ids.extend(result.version_ids or [])
-                            overall_result.section_ids.extend(result.section_ids or [])
-                    return overall_result
+        # Route to appropriate handler based on trigger type
+        if trigger_type == TriggerType.URN:
+            cms_client = CMSClient()
             
-            elif trigger_type == TriggerType.BLOB_NAME:
-                return await self._ingest_from_blob_name(value=value, experiment_id=experiment_id)
-            elif trigger_type == TriggerType.FILEPATH:
-                return await self._ingest_from_filepath(value=value, experiment_id=experiment_id)
-            else:
-                return IngestionResult(
-                    success=False,
-                    error=f"Unknown trigger type: {trigger_type}"
-                )
-                
-        except Exception as e:
-            logger.exception("Ingestion failed with exception")
-            return IngestionResult(success=False, error=str(e))
+            with self._log_step(
+                action="mds_auth_request",
+                object_type="mds",
+                experiment_id=experiment_id,
+            ):
+                if not cms_client.authenticate():
+                    logger.error("MDS authentication failed")
+                    raise Exception("MDS authentication failed")
+            return await self._ingest_from_urn(urn=value, cms_client=cms_client, experiment_id=experiment_id)
+        elif trigger_type == TriggerType.BLOB_NAME:
+            return await self._ingest_from_blob_name(blob_name=value, experiment_id=experiment_id)
+        elif trigger_type == TriggerType.FILEPATH:
+            return await self._ingest_from_filepath(filepath=value, experiment_id=experiment_id)
+        else:
+            raise Exception(f"Unknown trigger type: {trigger_type}")
 
     async def _ingest_from_urn(
             self,
-            value: str,
+            urn: str,
             cms_client: CMSClient,
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from CMS using URN (complete CMS flow)."""
-        urn = value
-        logger.info("Ingesting from URN: {}", urn)
+        logger.info(f"Ingesting from URN {urn}")
 
-        # Get case
-        self._log(
-            action="CMS_METADATA_REQUEST",
-            object_type="URN",
+        # Get case id
+        with self._log_step(
+            action="mds_case_id_request",
+            object_type="urn",
             object_id=urn,
-        )
-
-        case_id = cms_client.get_case_id_from_urn(urn)
-        if case_id is None:
-            logger.error("No case found for URN: {}", urn)
-            return IngestionResult(
-                success=False,
-                error=f"No case found for URN: {urn}",
-            )
+            experiment_id=experiment_id,
+        ):
+            case_id = cms_client.get_case_id_from_urn(urn)
+            if case_id is None:
+                logger.error(f"URN {urn}: No case found")
+                raise Exception(f"URN {urn}: No case found")
+            
         case_data = {
             "urn": urn,
-            "id": case_id,
+            "id": case_id,  # external CMS ID used as pk
         }   
-        logger.debug("Retrieved case ID for URN {}: {} ", urn, case_id)
-
+        logger.debug(f"URN {urn} Case {case_id}: Case ID retrieved ")
         
-        # Get case summary         
-        case_summary = cms_client.get_case_summary(case_id)
-        if case_summary is None:
-            logger.error("No case summary found for URN: {} case ID: {}", urn, case_id)
-            return IngestionResult(
-                success=False,
-                error=f"No case summary found for URN: {urn} case ID: {case_id}",
-            )        
+        # Get case summary
+        with self._log_step(
+            action="mds_case_summary_request",
+            object_type="case",
+            object_id=case_id,
+            experiment_id=experiment_id,
+        ):
+            case_summary = cms_client.get_case_summary(case_id)
+            if case_summary is None:
+                logger.error(f"URN {urn} Case {case_id}: No case summary")
+                raise Exception(f"URN {urn} Case {case_id}: No case summary")   
         
-        case_data["finalised"] = case_summary.get("finalised", None)
-        case_data["area_id"] = case_summary.get("areaId", None)
-        case_data["area_name"] = case_summary.get("areaName", None)
-        case_data["unit_id"] = case_summary.get("unitId", None)
-        case_data["unit_name"] = case_summary.get("unitName", None)
-        case_data["registration_date"] = case_summary.get("registrationDate", None)
-        logger.debug("Case info retrieved: URN={}, case_id={}", urn, case_id)
+        case_data.update(self._case_summary_to_dict(case_summary))
+        logger.debug(f"URN {urn} Case {case_id}: Case summary retrieved")
 
         # Get raw documents from CMS
-        documents_data = cms_client.list_case_documents(case_id=case_id)
-        if documents_data is None:
-            logger.warning("No documents found for URN: {} case ID: {}", urn, case_id)
-        logger.debug("Case {} has {} documents", case_id, len(documents_data) if documents_data else 0)
+        with self._log_step(
+            action="mds_document_list_request",
+            object_type="case",
+            object_id=case_id,
+            experiment_id=experiment_id,
+        ):
+            raw_documents_data = cms_client.list_case_documents(case_id=case_id)
+            if raw_documents_data is None:
+                logger.warning(f"URN {urn} Case {case_id}: No document data")
+                raise Exception(f"URN {urn} Case {case_id}: No document data")
+            
+        logger.debug(f"URN {urn} Case {case_id}: Number of documents: {len(raw_documents_data) if raw_documents_data else 0}")
         selected_documents_data = []
-        for doc_idx, doc_data in enumerate(documents_data or []):
-            logger.debug("Document {}: {} ({}:{})", doc_idx, doc_data.get("originalFileName"), doc_data.get("cmsDocCategory"), doc_data.get("type"))
-            if (
-                'MG3' in doc_data.get("presentationTitle", '').upper()
-                or 
-                'MG3' in doc_data.get("originalFileName", '').upper()
-            ):
-                pass  # accept by name
-            elif doc_data["cmsDocCategory"] not in self.supportedCMSDocCategories:
-                logger.debug("Skipping '{}'. Reason: non-MGForm document {}", doc_data.get("originalFileName"), doc_data.get("id"))
-                continue
-            elif doc_data["type"] not in self.supportedDocTypes:
-                logger.debug("Skipping '{}'. Reason: non-MG3 document {}", doc_data.get("originalFileName"), doc_data.get("id"))
+        for idx, raw_doc_data in enumerate(raw_documents_data or []):
+            logger.debug(f"URN {urn} Case {case_id} Document {idx}: {raw_doc_data.get('presentationTitle')} {raw_doc_data.get('originalFileName')} ({raw_doc_data.get('cmsDocCategory')}:{raw_doc_data.get('type')})")
+            if not is_document_supported(raw_doc_data=raw_doc_data):
                 continue
             
-            if doc_data["mimeType"] not in self.supportedMimeTypes:
-                logger.debug("Skipping '{}'. Reason: unsupported mime type document {}", doc_data.get("originalFileName"), doc_data.get("id"))
-                continue
-            
-            selected_documents_data.append(doc_data)
+            # Convert raw to internal document data format
+            doc_data = self._document_to_dict(raw_doc_data)
+            doc_data["case_id"] = case_id  # ensure case_id is included
+
             # Get raw documents from CMS
             self._log(
-                action="CMS_DOCUMENTS_REQUEST",
+                action="mds_document_data_request",
                 object_type="version",
-                object_id=doc_data["versionId"],
+                object_id=doc_data["version_id"],
+                experiment_id=experiment_id,
             )
             document_data = cms_client.download_data(
                 case_id=case_id,
                 document_id=doc_data["id"],
-                version_id=doc_data["versionId"],
+                version_id=doc_data["version_id"],
             )
+            self._log(
+                action=f"mds_document_data_{'success' if document_data is not None else 'failure'}",
+                object_type="version",
+                object_id=doc_data["version_id"],
+                experiment_id=experiment_id,
+            )
+            if document_data is None:
+                logger.error(f"URN {urn} Case {case_id} Document {doc_data['id']} v{doc_data['version_id']}: Failed to retrieve document content. Skipping document.")
+                continue
+
             doc_data["data"] = document_data
 
+            # Add to selected documents if data is retrieved successfully
+            selected_documents_data.append(doc_data)
+
         if not selected_documents_data:
-            logger.warning("No document selected for URN: {}, case ID: {}", urn, case_id)
+            logger.warning(f"URN {urn} Case {case_id}: No document selected")
             return IngestionResult(
                 success=False,
-                error=f"No document selected for URN: {urn}, case ID: {case_id}",
+                error=f"URN {urn} Case {case_id}: No document selected",
             )
         
         logger.debug(
-            "Selected documents for ingestion ({} in total): {}", 
-            len(selected_documents_data),
-            '; '.join([f"{doc['id']} v{doc['versionId']} ({doc['originalFileName']}, {doc['cmsDocCategory']}, {doc['type']}, {doc['mimeType']})" for doc in selected_documents_data]),
+            f"URN {urn} Case {case_id}: Selected documents for ingestion ({len(selected_documents_data)} in total): " +
+            '; '.join([f"{doc['id']} v{doc['version_id']} ({doc['original_file_name']}, {doc['cms_doc_category']}, {doc['doc_type']}, {doc['mime_type']})" for doc in selected_documents_data])
         )
 
         # Get defendants and charges from CMS
+        self._log(
+            action="mds_case_defendants_request",
+            object_type="case",
+            object_id=case_id,
+            experiment_id=experiment_id,
+        )
         defendants_data = cms_client.get_case_defendants(
             case_id=case_id,
             include_charges=True,
             include_offences=True,
         )
-        logger.debug("Case {} has {} defendants", case_id, len(defendants_data))
+        self._log(
+            action=f"mds_case_defendants_{'success' if defendants_data is not None else 'failure'}",
+            object_type="case",
+            object_id=case_id,
+            experiment_id=experiment_id,
+        )
+        logger.debug(f"URN {urn} Case {case_id}: Number of defendants: {len(defendants_data)}")
         for def_idx, def_data in enumerate(defendants_data):
             charges = def_data.get("charges", [])
             offences = def_data.get("offences", [])
-            logger.debug("Defendant {} has {} charges and {} offences", def_idx, len(charges), len(offences))
-
+            logger.debug(f"URN {urn} Case {case_id} Defendant {def_idx}: {len(charges)} charges and {len(offences)} offences")
         # Store case data and process documents
         result = await self._store_and_process_case(
             case_data,
@@ -275,17 +230,16 @@ class IngestionOrchestrator:
 
     async def _ingest_from_blob_name(
             self,
-            value: Sequence[str],
+            blob_name: str,
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from blob storage name."""
-        blob_name = value
-        logger.info("Ingesting from blob name: {}", blob_name)
+        logger.info(f"Ingesting from blob name: {blob_name}")
 
         with get_session() as session:
             # Store minimal case
             case_repo = CaseRepository(session)
-            case: Case = case_repo.upsert(urn="01BL0000001")
+            case: Case = case_repo.upsert(urn="01BL0000001") # Plaholder URN 
             
             # Store document reference
             doc_repo = DocumentRepository(session)
@@ -314,12 +268,11 @@ class IngestionOrchestrator:
 
     async def _ingest_from_filepath(
             self,
-            value: str,
+            filepath: str,
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from local filepath."""
-        filepath = value
-        logger.info("Ingesting from filepath: {}", filepath)
+        logger.info(f"Ingesting from filepath: {filepath}")
         
         # Read document from file system
         try:
@@ -337,7 +290,7 @@ class IngestionOrchestrator:
         )
         
         return await self._ingest_from_blob_name(
-            value=blob_name,
+            blob_name=blob_name,
             experiment_id=experiment_id,
         )
 
@@ -353,45 +306,124 @@ class IngestionOrchestrator:
         """Store data and process documents."""
         result = IngestionResult(success=True) 
 
+        case: Case = await self._store_case(
+            case_data=case_data,
+            experiment_id=experiment_id,
+        )
+        result.case_ids = [case.id]
+        
+        await self._store_defendants(
+            defendants_data=defendants_data,
+            experiment_id=experiment_id,
+        )
+
+        documents_data = await self._upload_document_blobs(
+            case=case,
+            documents_data=documents_data,
+            experiment_id=experiment_id,
+        )
+
+        # Store documents and versions
+        versions: list[Version] = await self._store_documents(
+            case=case,
+            documents_data=documents_data,
+            experiment_id=experiment_id,
+        )
+        
+        # Parse each document
+        for version in versions:
+            doc_result = await self._process_version(
+                version=version,
+                experiment_id=experiment_id,
+            )            
+            if doc_result.success:
+                result.document_ids.extend(doc_result.document_ids)
+                result.version_ids.extend(doc_result.version_ids)
+            else:
+                logger.warning(f"Document processing failed: doc_id={version.document_id}, error={doc_result.error}")
+        
+        return result
+
+    async def _store_case(
+        self,
+        case_data: dict[str, Any],
+        experiment_id: str | None,
+    ) -> Case:
+        """Store case data."""
         with get_session() as session:
-            # Store case
-            case_repo = CaseRepository(session)
-            case: Case = case_repo.upsert(**case_data)
-            result.case_id = case.id
-            
-            # Store defendants and charges
+            with self._log_step(
+                action="case_data_storage",
+                object_type="case",
+                object_id=case_data.get("id", None),
+                experiment_id=experiment_id,
+            ):
+                case_repo = CaseRepository(session)
+                case: Case = case_repo.upsert(**case_data)
+
+        return case
+
+
+    async def _store_defendants(
+        self,
+        defendants_data: list[dict[str, Any]],
+        experiment_id: str | None,
+    ) -> list[Defendant]:
+        """Store defendants, charges, and offences."""
+        defendants: list[Defendant] = []
+        with get_session() as session:
             defendant_repo = DefendantRepository(session)
             charge_repo = ChargeRepository(session)
             offence_repo = OffenceRepository(session)
             
             for defendant_data in defendants_data:
-                charges_data = defendant_data.pop("charges", [])
-                offences_data = defendant_data.pop("offences", [])
-                
-                defendant: Defendant = defendant_repo.upsert(**defendant_data)
-                
-                # Store charges
-                for charge_data in charges_data:
-                    charge_data["defendant_id"] = defendant.id
-                    charge_repo.upsert(**charge_data)
-        
-                # Store offences
-                for offence_data in offences_data:
-                    offence_data["defendant_id"] = defendant.id
-                    offence_repo.upsert(**offence_data)
-        
+
+                with self._log_step(
+                    action="defendant_data_storage",
+                    object_type="defendant",
+                    object_id=defendant_data.get("id", None),
+                    experiment_id=experiment_id,
+                ):
+                    charges_data = defendant_data.pop("charges", [])
+                    offences_data = defendant_data.pop("offences", [])
+                    
+                    defendant: Defendant = defendant_repo.upsert(**defendant_data)
+                    defendants.append(defendant)
+                    
+                    # Store charges
+                    for charge_data in charges_data:
+                        charge_data["defendant_id"] = defendant.id
+                        charge_repo.upsert(**charge_data)
+            
+                    # Store offences
+                    for offence_data in offences_data:
+                        offence_data["defendant_id"] = defendant.id
+                        offence_repo.upsert(**offence_data)
+        return defendants
+
+    async def _upload_document_blobs(
+        self,
+        case: Case,
+        documents_data: list[dict[str, Any]],
+        experiment_id: str | None,
+    ) -> list[dict[str, Any]]:
+        """Upload document content to blob storage and update document data with blob references."""  
         # Store each document
-        versions: list[Version] = []
         for doc_data in documents_data:
 
+            self._log(
+                action="document_content_store_begin",
+                object_type="version",
+                object_id=doc_data.get("version_id", None),
+                experiment_id=experiment_id,
+            )
             if doc_data.get("id") is None:
                 doc_data["id"] = uuid.uuid4().int
-            if doc_data.get("versionId") is None:
-                doc_data["versionId"] = uuid.uuid4().int
+            if doc_data.get("version_id") is None:
+                doc_data["version_id"] = uuid.uuid4().int
 
             # Upload file content to Blob Storage
             container_name = self.settings.storage.blob_container_name_source
-            blob_name = f"{experiment_id}/{case.id}/{doc_data['id']}_{doc_data['versionId']}{doc_data['fileExtension']}"
+            blob_name = f"{experiment_id or 'None'}/{case.id}/{doc_data['id']}_{doc_data['version_id']}{doc_data['file_extension']}"
             save_blob(
                 container_name=container_name,
                 blob_name=blob_name,
@@ -399,50 +431,57 @@ class IngestionOrchestrator:
             )
             doc_data['source_blob_container'] = container_name
             doc_data['source_blob_name'] = blob_name
+            
+            self._log(
+                action="document_content_store_end",
+                object_type="version",
+                object_id=doc_data.get("version_id", None),
+                experiment_id=experiment_id,
+            )
+        return documents_data
 
-        # Store documents and versions
+    async def _store_documents(
+        self,
+        case: Case,
+        documents_data: list[dict[str, Any]],
+        experiment_id: str | None,
+    ) -> list[Version]:
+        """Store document and version data."""
+        versions: list[Version] = []
         with get_session() as session:
             doc_repo = DocumentRepository(session)
             version_repo = VersionRepository(session)
-            # Store documents and versions
             for doc_data in documents_data:
+                self._log(
+                    action="document_record_store_begin",
+                    object_type="document",
+                    object_id=doc_data.get("id", None),
+                    experiment_id=experiment_id,
+                )
                 document = doc_repo.upsert(
                     id=doc_data.get("id", None),
                     case_id=case.id,
-                    cms_doc_category=doc_data.get("cms_doc_category"),
-                    original_file_name=doc_data.get("original_file_name", "document"),
-                    doc_type=doc_data.get("doc_type"),
-                    file_extension=doc_data.get("file_extension"),
-                    mime_type=doc_data.get("mime_type"),
+                    presentation_title=doc_data.get("presentation_title", None),
+                    original_file_name=doc_data.get("original_file_name", None),
+                    cms_doc_category=doc_data.get("cms_doc_category", None),
+                    doc_type=doc_data.get("doc_type", None),
+                    file_extension=doc_data.get("file_extension", None),
+                    mime_type=doc_data.get("mime_type", None),
                 )
                 version = version_repo.upsert(
-                    id=doc_data.get("versionId", None),
+                    id=doc_data.get("version_id", None),
                     document_id=document.id,
                     source_blob_container=doc_data.get("source_blob_container", None),
                     source_blob_name=doc_data.get("source_blob_name", None),
                 )
                 versions.append(version)
-        
-        # Parse each document
-        for version in versions:
-
-            doc_result = await self._process_version(
-                version=version,
-                experiment_id=experiment_id,
-            )
-            
-            if doc_result.success:
-                result.document_ids.extend(doc_result.document_ids)
-                result.version_ids.extend(doc_result.version_ids)
-                result.section_ids.extend(doc_result.section_ids)
-            else:
-                logger.warning(
-                    "Document processing failed: doc_id={}, error={}",
-                    version.document_id,
-                    doc_result.error,
+                self._log(
+                    action="document_record_store_end",
+                    object_type="document",
+                    object_id=doc_data.get("id", None),
+                    experiment_id=experiment_id,
                 )
-        
-        return result
+        return versions
 
     async def _process_version(
         self,
@@ -460,19 +499,38 @@ class IngestionOrchestrator:
             
         # Parse file content
         self._log(
-            action="DOCUMENT_PARSE_REQUEST",
+            action="document_parse_begin",
             object_type="version",
             object_id=version.id,
+            experiment_id=experiment_id,
         )
         parsing_result = self._parse_document(content)
+        self._log(
+            action="document_parse_end",
+            object_type="version",
+            object_id=version.id,
+            experiment_id=experiment_id,
+        )
 
-        # Store parsed content back to Blob Storage
+        # Store parsed content on Blob Storage
+        self._log(
+            action="parsed_content_storage_begin",
+            object_type="version",
+            object_id=version.id,
+            experiment_id=experiment_id,
+        )
         container_name = self.settings.storage.blob_container_name_processed
         blob_name = f"{version.source_blob_name}.json"
         save_blob(
             container_name=container_name,
             blob_name=blob_name,
             data=json.dumps(parsing_result.as_dict(), indent=2).encode("utf-8"),
+        )
+        self._log(
+            action="parsed_content_storage_end",
+            object_type="version",
+            object_id=version.id,
+            experiment_id=experiment_id,
         )
 
         # Update version
@@ -487,57 +545,13 @@ class IngestionOrchestrator:
         result.document_ids.append(version.document_id)
         result.version_ids.append(version.id)
         
-        # Extract sections
-        self._log(
-            action="SECTION_EXTRACTION_REQUEST",
-            object_type="version",
-            object_id=version.id,
-        )
-        sections_data = self._extract_sections(parsing_result=parsing_result)
-        
-        # Store sections
-        with get_session() as session:
-            
-            experiment_repo = ExperimentRepository(session)
-            if experiment_id is not None:
-                experiment: Experiment = experiment_repo.upsert(id=experiment_id)
-            else:
-                experiment: Experiment = experiment_repo.create()
-
-            section_repo = SectionRepository(session)
-            
-            for section_data in sections_data:
-                raw_content = section_data.get("content")
-                redacted_content = self._redact_content(raw_content)
-                # Create section record (create id)
-                section: Section = section_repo.upsert(
-                    version_id=version.id,
-                    document_id=version.document_id,
-                    experiment_id=experiment.id,
-                    redacted_content=redacted_content,
-                    created_at=datetime.now(timezone.utc),
-                )
-                # Save section content to Blob Storage
-                content_blob_name = f"{experiment.id}/{version.id}/{section.id}.txt"
-                save_blob(
-                    container_name=self.settings.storage.blob_container_name_section,
-                    blob_name=content_blob_name,
-                    data=section_data.get("content", "").encode("utf-8"),
-                )
-                # Update section with blob info
-                section_repo.update(
-                    id_value=section.id,
-                    content_blob_container=self.settings.storage.blob_container_name_section,
-                    content_blob_name=content_blob_name,
-                )
-                result.section_ids.append(section.id)
-        
         return result
 
-    def _parse_document(self, content: bytes) -> AnalyzeResult:
+    def _parse_document(
+            self,
+            content: bytes,
+        ) -> AnalyzeResult:
         """Parse document content using Azure Document Intelligence."""
-
-        doc_intel: DocumentIntelligenceClient = get_docintel_client()
 
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
         def __parse(doc_intel: DocumentIntelligenceClient, content: bytes) -> AnalyzeResult:
@@ -548,101 +562,55 @@ class IngestionOrchestrator:
                 content_type="application/octet-stream",
                 # try content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
-            logger.debug("Poller status: {}", poller.status())
+            logger.debug(f"Poller status: {poller.status()}")
             # Wait for the analysis to complete
             parsing_result: AnalyzeResult = poller.result()
             return parsing_result
 
-        parsing_result: AnalyzeResult = __parse(doc_intel, content)
+        try:
+            parsing_result: AnalyzeResult = __parse(self.doc_intel, content)
+        except Exception as e:
+            self._log(
+                action="document_parse_failure",
+                object_type="version",
+                object_id=None,
+                source="DocumentIntelligenceClient",
+            )
+            cause = e.last_attempt.exception() if hasattr(e, "last_attempt") else e
+            logger.exception(f"Document parsing failed with exception: {cause}")
+            raise cause
+        
         return parsing_result
 
-    def _extract_sections(
-        self, parsing_result: AnalyzeResult
-    ) -> list[dict[str, Any]]:
-        """Extract sections"""
-        logger.debug("Extracting sections with Azure AI Foundry")
+
+    def _case_summary_to_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Convert raw CMS case summary data to internal format."""
+        return {
+            "finalised": data.get("finalised", None),
+            "area_id": data.get("areaId", None),
+            "area_name": data.get("areaName", None),
+            "unit_id": data.get("unitId", None),
+            "unit_name": data.get("unitName", None),
+            "registration_date": data.get("registrationDate", None),
+        }
     
-        with get_session() as session:
-            prompt_template_repo: PromptTemplateRepository = PromptTemplateRepository(session)
-            prompt_template = prompt_template_repo.get_last_version_by(agent="section_extractor")
-            if prompt_template is None:
-                raise ValueError("No prompt template found for agent 'section_extractor'")
-        
-        template = Environment(autoescape=True).from_string(source=prompt_template.template)
-        context_text = parsing_result.get("content", "")
-        compiled_prompt = template.render(contextText=context_text)
-        
-        llm_client = get_llm_client()
 
-        @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-        def __extract(
-            compiled_prompt: str,
-            llm_client: AzureOpenAI,
-        ) -> Any:
-            """Extract sections using Azure AI Foundry."""
-            class SectionContent(BaseModel):
-                narratives: list[str] | None = None
+    def _document_to_dict(
+            self,
+            data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Convert raw CMS document data to internal format."""
+        return {
+            "id": data.get("id"),
+            "version_id": data.get("versionId"),
+            "presentation_title": data.get("presentationTitle"),
+            "original_file_name": data.get("originalFileName"),
+            "cms_doc_category": data.get("cmsDocCategory"),
+            "doc_type": data.get("type"),
+            "file_extension": Path(data.get("originalFileName", "")).suffix,
+            "mime_type": data.get("mimeType"),
+        }
 
-            # responses.parse() expects model gpt-4o (or newer), API version: 2025-03-01-preview (or newer)
-            response = llm_client.responses.parse(
-                model=self.settings.ai_foundry.deployment_name,
-                input=[{"role": "user", "content": compiled_prompt}],
-                text_format=SectionContent,
-                temperature=0.0,
-            )
-            sections_data = response.output_parsed
-            if sections_data.narratives is None or len(sections_data.narratives) == 0:
-                logger.warning("No sections extracted from document")
-                return []
-            logger.debug("Extracted {} sections", len(sections_data.narratives))
-            return sections_data.narratives
-        
-        # Convert to list of dicts and validate each
-        extracted_sections = __extract(compiled_prompt, llm_client)
-        result = []
-        for idx, content in enumerate(extracted_sections):
-            is_valid = is_valid_subset(
-                text=context_text,
-                subset=content,
-            )
-            if not is_valid:
-                logger.warning("Extracted section {} content failed subset validation, skipping", idx)
-                continue
-            result.append({"content": content})
-
-        return result
-
-    def _redact_content(self, content: str) -> str:
-        """Redact UK and Northern Ireland Personally Identifiable Information (PII) from content."""
-        
-        with get_session() as session:
-            prompt_template_repo: PromptTemplateRepository = PromptTemplateRepository(session)
-            prompt_template = prompt_template_repo.get_last_version_by(agent="redactor")
-            if prompt_template is None:
-                raise ValueError("No prompt template found for agent 'redactor'")
-        
-        template = Environment(autoescape=True).from_string(source=prompt_template.template)
-        compiled_prompt = template.render(contextText=content)
-
-        llm_client = get_llm_client()
-
-        @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-        def _redact(llm_client: AzureOpenAI, compiled_prompt: str) -> str:
-            """Redact PII from content using Azure AI Foundry."""
-            class RedactedContent(BaseModel):
-                redacted_text: str
-            
-            response = llm_client.responses.parse(
-                model=self.settings.ai_foundry.deployment_name,
-                input=[{"role": "user", "content": compiled_prompt}],
-                text_format=RedactedContent,
-                temperature=0.0,
-            )
-            redacted_text = response.output_parsed.redacted_text
-            return redacted_text
-        
-        return _redact(llm_client, compiled_prompt)
-    
     def _log(
         self, *,
         event_type: str | None = None,
@@ -650,17 +618,38 @@ class IngestionOrchestrator:
         action: str,
         object_type: str,
         object_id: str | None = None,
+        experiment_id: str | None = None,
         correlation_id: str | None = None,
         source: str | None = None,
         ) -> None:
         """Log."""
+
         if self.event_repo:
             self.event_repo.log(
-                event_type=event_type or "INGESTION",
-                actor_id=actor_id or "INGESTION_ORCHESTRATOR",
+                event_type=event_type or "ingestion",
+                actor_id=actor_id or "ingestion.orchestrator",
                 action=action,
                 object_type=object_type,
                 object_id=str(object_id) if object_id is not None else None,
+                experiment_id=experiment_id,
                 correlation_id=correlation_id or self.correlation_id,
                 source=source or self.__class__.__name__,
+                created_at=datetime.now(timezone.utc),
             )
+
+    @contextmanager
+    def _log_step(
+        self,
+        action: str,
+        object_type: str,
+        object_id=None,
+        experiment_id=None,
+    ):
+        """Context manager for logging the start and end of a processing step, as well as any failure."""
+        self._log(action=f"{action}_begin", object_type=object_type, object_id=object_id, experiment_id=experiment_id)
+        try:
+            yield
+            self._log(action=f"{action}_end", object_type=object_type, object_id=object_id, experiment_id=experiment_id)
+        except Exception:
+            self._log(action=f"{action}_failure", object_type=object_type, object_id=object_id, experiment_id=experiment_id)
+            raise

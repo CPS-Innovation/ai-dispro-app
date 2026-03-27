@@ -29,7 +29,6 @@ class TestIngestion:
 
         # Verify TriggerType enum
         assert hasattr(TriggerType, 'URN')
-        assert hasattr(TriggerType, 'URN_LIST')
         assert hasattr(TriggerType, 'BLOB_NAME')
         assert hasattr(TriggerType, 'FILEPATH')
         
@@ -53,24 +52,6 @@ class TestIngestion:
         orchestrator = IngestionOrchestrator()
         assert orchestrator is not None
         assert orchestrator.settings is not None
-        assert hasattr(orchestrator, 'supportedCMSDocCategories')
-        assert hasattr(orchestrator, 'supportedDocTypes')
-        assert hasattr(orchestrator, 'supportedMimeTypes')
-
-    @pytest.mark.regression
-    def test_supported_formats(self):
-        """Test that supported formats are correctly defined."""
-        orchestrator = IngestionOrchestrator()
-        
-        # Verify supported CMS doc categories
-        assert "MGForm" in orchestrator.supportedCMSDocCategories
-        
-        # Verify supported doc types
-        assert "MG 3" in orchestrator.supportedDocTypes or "MG3" in orchestrator.supportedDocTypes
-        
-        # Verify supported MIME types
-        assert "application/pdf" in orchestrator.supportedMimeTypes
-        assert "application/vnd.openxmlformats-officedocument.wordprocessingml.document" in orchestrator.supportedMimeTypes
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -129,70 +110,12 @@ class TestIngestion:
         """Test handling of unknown trigger type."""
         orchestrator = IngestionOrchestrator()
         
-        result = await orchestrator.ingest(
-            trigger_type="INVALID",  # type: ignore
-            value="test",
-        )
-        
-        assert result.success is False
-        assert "Unknown trigger type" in result.error
+        with pytest.raises(Exception):
+            await orchestrator.ingest(
+                trigger_type="INVALID",  # type: ignore
+                value="test",
+            )
 
-    @pytest.mark.unit
-    def test_supported_cms_doc_categories_filter(self):
-        """Test that only supported CMS doc categories are processed."""
-        orchestrator = IngestionOrchestrator()
-        
-        documents = [
-            {"cmsDocCategory": "MGForm", "type": "MG3", "mimeType": "application/pdf"},
-            {"cmsDocCategory": "Other", "type": "MG3", "mimeType": "application/pdf"},
-            {"cmsDocCategory": "MGForm", "type": "MG3", "mimeType": "application/pdf"},
-        ]
-        
-        # Count documents that would be processed
-        filtered = [
-            doc for doc in documents
-            if doc["cmsDocCategory"] in orchestrator.supportedCMSDocCategories
-        ]
-        
-        assert len(filtered) == 2
-
-    @pytest.mark.unit
-    def test_supported_doc_types_filter(self):
-        """Test that only supported doc types are processed."""
-        orchestrator = IngestionOrchestrator()
-        
-        documents = [
-            {"cmsDocCategory": "MGForm", "type": "MG3", "mimeType": "application/pdf"},
-            {"cmsDocCategory": "MGForm", "type": "MG1", "mimeType": "application/pdf"},
-            {"cmsDocCategory": "MGForm", "type": "MG 3", "mimeType": "application/pdf"},
-        ]
-        
-        # Count documents that would be processed
-        filtered = [
-            doc for doc in documents
-            if doc["type"] in orchestrator.supportedDocTypes
-        ]
-        
-        assert len(filtered) >= 1  # At least MG3 or MG 3
-
-    @pytest.mark.unit
-    def test_supported_mime_types_filter(self):
-        """Test that only supported MIME types are processed."""
-        orchestrator = IngestionOrchestrator()
-        
-        documents = [
-            {"cmsDocCategory": "MGForm", "type": "MG3", "mimeType": "application/pdf"},
-            {"cmsDocCategory": "MGForm", "type": "MG3", "mimeType": "text/plain"},
-            {"cmsDocCategory": "MGForm", "type": "MG3", "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
-        ]
-        
-        # Count documents that would be processed
-        filtered = [
-            doc for doc in documents
-            if doc["mimeType"] in orchestrator.supportedMimeTypes
-        ]
-        
-        assert len(filtered) == 2  # PDF and DOCX
 
 class TestIngestionIntegration:
 
@@ -203,17 +126,6 @@ class TestIngestionIntegration:
         result = await ingestion_orchestrator.ingest(
             trigger_type=TriggerType.URN,
             value=settings.test.cms_urn,
-            experiment_id="TST-EXP-Ingestion-URN",
-        )
-        assert result.success
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_ingest_urn_list(self, db_initialized, settings):
-        ingestion_orchestrator = IngestionOrchestrator()
-        result = await ingestion_orchestrator.ingest(
-            trigger_type=TriggerType.URN_LIST,
-            value=[settings.test.cms_urn],
             experiment_id="TST-EXP-Ingestion-URN",
         )
         assert result.success

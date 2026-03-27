@@ -16,7 +16,7 @@ class TestIngestionEndpoint:
         """Test successful document ingestion."""
         mock_result = IngestionResult(
             success=True,
-            section_ids=[1, 2],
+            version_ids=[1, 2],
             error=None,
         )
         mock_orchestrator = MagicMock()
@@ -35,11 +35,11 @@ class TestIngestionEndpoint:
         mock_init_db.assert_called_once()
         mock_ingest.assert_called_once()
 
-        expected_keys = {"status", "section_ids", "experiment_id", "correlation_id", "error"}
+        expected_keys = {"status", "version_ids", "experiment_id", "correlation_id", "error"}
         assert set(result.keys()) == expected_keys
 
         assert result["status"] == "success"
-        assert result["section_ids"] == [1, 2]
+        assert result["version_ids"] == [1, 2]
         assert result["experiment_id"] == "exp-123"
         assert result["error"] is None
 
@@ -49,7 +49,7 @@ class TestIngestionEndpoint:
         """Test ingestion failure returns error status."""
         mock_result = IngestionResult(
             success=False,
-            section_ids=[],
+            version_ids=[],
             error="Failed to process document",
         )
         mock_orchestrator = MagicMock()
@@ -65,7 +65,7 @@ class TestIngestionEndpoint:
             )
 
         assert result["status"] == "error"
-        assert result["section_ids"] == []
+        assert result["version_ids"] == []
         assert result["error"] == "Failed to process document"
 
 
@@ -84,15 +84,6 @@ class TestIngestionIntegration:
         )
         assert result["status"] == "success"
 
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_ingestion_with_urn_list(self):
-        result = await ingestion(
-            trigger_type="urn_list",
-            value=[self.settings.test.cms_urn],
-            experiment_id="TST-EXP-API-Ingestion-URN_LIST",
-        )
-        assert result["status"] == "success"
 
     @pytest.mark.asyncio
     @pytest.mark.integration

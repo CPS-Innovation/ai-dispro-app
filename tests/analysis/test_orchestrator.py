@@ -5,7 +5,7 @@ from unittest.mock import patch
 from src.config import SettingsManager
 from src.database import init_session_manager, init_database
 from src.services import save_blob
-from src.analysis import AnalysisOrchestrator
+from src.analysis import AnalysisOrchestrator, ExtractionResult
 from src.analysis.tasks import AnalysisTask
 from src.analysis.workers import (
     EchoWorker,
@@ -31,11 +31,6 @@ def db_initialized():
     yield
 
 
-@pytest.fixture(scope="class")
-def settings():
-    return SettingsManager.get_instance()
-
-
 @pytest.fixture
 def mock_task() -> AnalysisTask:
     return AnalysisTask(
@@ -53,9 +48,37 @@ def mock_task() -> AnalysisTask:
 class TestAnalysisOrchestrator:
     """Tests for AnalysisOrchestrator."""
 
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_init_orchestrator(self):
+        """Test initializing the orchestrator with default tasks."""
+        orchestrator = AnalysisOrchestrator()
+        assert len(orchestrator.task_dict) >= 1
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_init_orchestrator_with_task(self, mock_task):
+        """Test initializing the orchestrator with default tasks."""
+        orchestrator = AnalysisOrchestrator(tasks=[mock_task])
+        assert len(orchestrator.task_dict) == 1
+        assert mock_task.task_id in orchestrator.task_dict
+        assert orchestrator.task_dict[mock_task.task_id] == mock_task
+
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_call_analyze_with_mock(self, mock_task, db_initialized, settings, mock_db_session):
+    async def test_extract(self, db_initialized):
+        """Test the extract method."""
+        settings = SettingsManager.get_instance()
+        orchestrator = AnalysisOrchestrator()
+        extraction_result: ExtractionResult = orchestrator.extract_section(
+            version_id=settings.test.version_id
+        )
+        assert extraction_result is not None
+        assert len(extraction_result.section_ids) > 0
+
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_call_analyze_with_mock(self, mock_task, mock_db_session):
         """Test analyze_section method."""
 
         # Setup
@@ -104,16 +127,18 @@ class TestAnalysisOrchestrator:
             def __exit__(self, exc_type, exc, tb):
                 return False
 
-        with patch("src.analysis.orchestrator.get_session", return_value=_SessionCtx(mock_db_session)):
-            with patch("src.analysis.orchestrator.load_blob", return_value=content.encode("utf-8")):
-                with patch.object(orchestrator, "analyze", return_value="mocked_analysis_job") as mock_analyze:
-                    analysis_job = orchestrator.analyze_section(section_id=section.id)
+        with patch("src.analysis.orchestrator.get_session", return_value=_SessionCtx(mock_db_session)), \
+             patch("src.analysis.orchestrator.SectionRepository") as MockSectionRepo, \
+             patch("src.analysis.orchestrator.ExperimentRepository"), \
+             patch.object(orchestrator, "analyze", return_value="mocked_analysis_job") as mock_analyze:
+            MockSectionRepo.return_value.get_by_id.return_value = section
+            analysis_job = orchestrator.analyze_section(section_id=section.id)
 
-                    assert mock_analyze.call_count == 1
-                    call_kwargs = mock_analyze.call_args.kwargs
-                    assert call_kwargs["text"] == content
-                    assert call_kwargs["section_id"] == section.id
-                    assert analysis_job == "mocked_analysis_job"
+            assert mock_analyze.call_count == 1
+            call_kwargs = mock_analyze.call_args.kwargs
+            assert call_kwargs["text"] == redacted_content
+            assert call_kwargs["section_id"] == section.id
+            assert analysis_job == "mocked_analysis_job"
 
     @pytest.mark.parametrize("tasks", [
         [AnalysisTask(
@@ -159,7 +184,7 @@ class TestAnalysisOrchestrator:
     ])
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_call_analyze(self, tasks, db_initialized, settings, db_session):
+    async def test_call_analyze(self, tasks, db_initialized, db_session):
         """Test analyze_section method."""
 
         # Setup

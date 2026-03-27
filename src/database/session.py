@@ -42,6 +42,10 @@ class SessionManager:
 
     def create_all(self):
         """Create all tables in the database."""
+        schema = SettingsManager.get_instance().database.schema
+        with self._engine.connect() as conn:
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+            conn.commit()
         Base.metadata.create_all(self._engine)
 
     def truncate_table(self, table_name: str):

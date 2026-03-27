@@ -10,10 +10,10 @@ def get_connection_string(settings: SettingsManager | None = None) -> str:
     database = (settings or SettingsManager.get_instance()).database
     credential = get_credentials()
     password = credential.get_token(AZURE_PG_SCOPE).token
-
-    return (   
+    connection_string = (
         f"postgresql+psycopg2://{database.username}:{password}"
         f"@{database.host}:{database.port}/{database.name}"
         f"?options=-c%20search_path%3D{database.schema}" # psycopg2 URL-encoded
         "&sslmode=require" # Azure requires SSL
     )
+    return connection_string

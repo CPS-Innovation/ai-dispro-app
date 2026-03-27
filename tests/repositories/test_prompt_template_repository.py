@@ -17,6 +17,13 @@ def test_prompt_template_repository(db_session):
         except Exception as e:
             pytest.fail(f"Template id={pt.id} failed: {e}")
         
+@pytest.mark.integration
+def test_prompt_template_repository_no_upsert(db_session):
+    """Test PromptTemplate repository create."""
+    repo = PromptTemplateRepository(db_session)
+    with pytest.raises(NotImplementedError):
+        repo.upsert(foo="bar")
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("template", [

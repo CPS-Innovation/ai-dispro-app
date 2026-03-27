@@ -5,7 +5,6 @@ from dataclasses import dataclass
 class TriggerType(str, Enum):
     """Ingestion trigger types as defined in likec4."""
     URN = "urn"
-    URN_LIST = "urn_list"
     BLOB_NAME = "blob_name"
     FILEPATH = "filepath"
 
@@ -17,7 +16,6 @@ class IngestionResult:
     case_ids: list[int] | None = None
     document_ids: list[int] | None = None
     version_ids: list[int] | None = None
-    section_ids: list[int] | None = None
     error: str | None = None
     
     def __post_init__(self):
@@ -25,7 +23,5 @@ class IngestionResult:
             self.document_ids = []
         if self.version_ids is None:
             self.version_ids = []
-        if self.section_ids is None:
-            self.section_ids = []
         if self.case_ids is None:
             self.case_ids = []

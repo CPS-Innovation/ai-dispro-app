@@ -30,13 +30,10 @@ class AnalysisResult(Base):
         Integer, ForeignKey(f"{_settings.storage.table_name_analysisjobs}.id"), nullable=False, index=True
     )
     
-    prompt_template_id: Mapped[str | None] = mapped_column(
-        String(50), 
-        nullable=True,
-    )
+    prompt_template_id: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    theme_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    pattern_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    theme_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
+    pattern_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     justification: Mapped[str | None] = mapped_column(Text, nullable=True)
     category_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
@@ -44,10 +41,10 @@ class AnalysisResult(Base):
     is_witness: Mapped[bool | None] = mapped_column(nullable=True)
     rewritten_phrase: Mapped[str | None] = mapped_column(Text, nullable=True)
     rewritten_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
-    defence_verdict: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    defence_pattern: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    defence_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
+    defence_pattern: Mapped[str | None] = mapped_column(Text, nullable=True)
     defence_argument: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reviewer_final_verdict: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reviewer_final_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewer_confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     reviewer_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)

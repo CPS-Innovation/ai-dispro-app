@@ -24,26 +24,23 @@ async def workflow(
     )
 
     if ingestion_result.get('status') != "success":
-        return ingestion_result
+        return {"ingestion": ingestion_result}
 
-    section_ids = ingestion_result.get("section_ids", [])
+    version_ids = ingestion_result.get("version_ids", [])
 
     # Perform analysis on each ingested section
-    analysis_results = []
-    for section_id in section_ids:
-        result = await analysis(
-            section_id=section_id,
-            task_ids=task_ids,
-            correlation_id=correlation_id,
-        )
-        if result.get('status') != "success":
-            return result
-        analysis_results.append(result)
+    analysis_results = await analysis(
+        version_ids=version_ids,
+        task_ids=task_ids,
+        experiment_id=experiment_id,
+        correlation_id=correlation_id,
+    )
 
     return {
-        "status": "success",
+        "trigger_type": trigger_type,
+        "value": value,
         "experiment_id": experiment_id,
         "correlation_id": correlation_id,
-        "section_ids": section_ids,
-        "analysis_job_ids": [res.get("analysis_job_id") for res in analysis_results],
+        "ingestion": ingestion_result,
+        "analysis_results": analysis_results,
     }

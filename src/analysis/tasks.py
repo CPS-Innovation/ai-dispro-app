@@ -39,7 +39,7 @@ for (task_id, theme_id, pattern_id, worker_class) in [
     ('combined-age-appropriate',  'combined', 'age-appropriate', LangGraphWorker),
     ('combined-emotionally neutral', 'combined', 'emotionally neutral', LangGraphWorker),
     ('combined-character',          'combined', 'character', LangGraphWorker),
-    ('combined-fact-based',         'combined', 'fact-based', LangGraphWorker),
+    ('combined-grounded-in-evidence', 'combined','grounded in evidence', LangGraphWorker),
     ('combined-non-judgemental',    'combined', 'non-judgemental', LangGraphWorker),
     ('combined-offence-appropriate','combined', 'offence-appropriate', LangGraphWorker),
     ('combined-probative',  'combined', 'probative', LangGraphWorker),
