@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 import json
+from contextlib import contextmanager
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 from loguru import logger
@@ -66,64 +67,42 @@ class AnalysisOrchestrator:
 
         result: ExtractionResult = ExtractionResult(success=False)
 
-        self._log(
+        with self._log_step(
             event_type="extraction",
-            action="version_load_begin",
+            action="version_load",
             object_type="version",
             object_id=version_id,
             experiment_id=experiment_id,
-        )
-        with get_session() as session:
-            version_repo = VersionRepository(session)
-            version: Version = version_repo.get_by_id(version_id)
+        ):
+            with get_session() as session:
+                version_repo = VersionRepository(session)
+                version: Version = version_repo.get_by_id(version_id)
 
-        parsing_result = load_blob(
-            container_name=version.parsed_blob_container,
-            blob_name=version.parsed_blob_name,
-        )
-        # convert bytes to dict
-        parsing_result = json.loads(parsing_result.decode("utf-8"))
-        result.version_id = version_id
-        self._log(
-            event_type="extraction",
-            action="version_load_end",
-            object_type="version",
-            object_id=version_id,
-            experiment_id=experiment_id,
-        )
+            parsing_result = load_blob(
+                container_name=version.parsed_blob_container,
+                blob_name=version.parsed_blob_name,
+            )
+            # convert bytes to dict
+            parsing_result = json.loads(parsing_result.decode("utf-8"))
+            result.version_id = version_id
 
         # Extract sections
-        self._log(
-            event_type="extraction",
-            action="section_extraction_begin",
-            object_type="version",
-            object_id=version.id,
-            experiment_id=experiment_id,
-        )
         try:
-            sections_data = self._extract_sections(
-                parsing_result=parsing_result,
-                version_id=version.id,
-            )
+            with self._log_step(
+                event_type="extraction",
+                action="section_extraction",
+                object_type="version",
+                object_id=version.id,
+                experiment_id=experiment_id,
+            ):
+                sections_data = self._extract_sections(
+                    parsing_result=parsing_result,
+                    version_id=version.id,
+                )
         except Exception as e:
             logger.error(f"Error extracting sections for version {version_id}: {e}")
-            self._log(
-                event_type="extraction",
-                action="section_extraction_failure",
-                object_type="version",
-                object_id=f"{version_id}:{e}",
-                experiment_id=experiment_id,
-                source="orchestrator",
-            )
             result.error = str(e)
             return result
-        self._log(
-            event_type="extraction",
-            action="section_extraction_end",
-            object_type="version",
-            object_id=version.id,
-            experiment_id=experiment_id,
-        )
         
         # Store sections
         with get_session() as session:
@@ -503,16 +482,20 @@ class AnalysisOrchestrator:
                 max_output_tokens=16000,
                 truncation="auto",
             )
+            narratives: list[str] = []
             try:
                 sections_data = response.output_parsed
+                # Use the parsed narratives if available
+                narratives = sections_data.narratives or []
             except Exception as e:
                 logger.error(f"Error parsing section extraction response for version {version_id}: {e}")
-                sections_data = json.loads(response.output_text + '"]')
-            if sections_data.narratives is None or len(sections_data.narratives) == 0:
+                # Fallback: attempt to parse raw text as JSON, preserving existing behavior
+                narratives = json.loads(response.output_text + '"]')
+            if not narratives:
                 logger.warning("No sections extracted from document")
                 return []
-            logger.debug(f"Extracted {len(sections_data.narratives)} sections")
-            return sections_data.narratives
+            logger.debug(f"Extracted {len(narratives)} sections")
+            return narratives
 
         
         # Convert to list of dicts and validate each
@@ -558,7 +541,7 @@ class AnalysisOrchestrator:
     def _redact_content(
             self,
             content: str,
-            version_id: str | None = None,
+            version_id: int | None = None,
         ) -> str:
         """Redact UK and Northern Ireland Personally Identifiable Information (PII) from content."""
         
@@ -608,7 +591,7 @@ class AnalysisOrchestrator:
                 event_type="extraction",
                 action="content_redaction_failure",
                 object_type="version",
-                object_id=version_id,
+                object_id=str(version_id) if version_id is not None else None,
                 source="llm",
             )
             cause = e.last_attempt.exception() if hasattr(e, "last_attempt") else e
@@ -641,3 +624,39 @@ class AnalysisOrchestrator:
                 source=source or self.__class__.__name__,
                 created_at=datetime.now(timezone.utc),
             )
+
+    @contextmanager
+    def _log_step(
+        self,
+        event_type: str,
+        action: str,
+        object_type: str,
+        object_id=None,
+        experiment_id=None,
+    ):
+        """Context manager for logging the start and end of a processing step, as well as any failure."""
+        self._log(
+            event_type=event_type,
+            action=f"{action}_begin", 
+            object_type=object_type, 
+            object_id=object_id, 
+            experiment_id=experiment_id,
+        )
+        try:
+            yield
+            self._log(
+                event_type=event_type,
+                action=f"{action}_end",
+                object_type=object_type,
+                object_id=object_id,
+                experiment_id=experiment_id,
+            )
+        except Exception:
+            self._log(
+                event_type=event_type,
+                action=f"{action}_failure",
+                object_type=object_type,
+                object_id=object_id,
+                experiment_id=experiment_id,
+            )
+            raise

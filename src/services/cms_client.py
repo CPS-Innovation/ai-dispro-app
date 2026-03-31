@@ -83,14 +83,12 @@ class CMSClient:
 
     def get_urn_from_case_id(self, case_id: int) -> str | None:
         """Get URN from case ID."""
-
         url = f"{self.base_url}/cases/{case_id}/summary"
         headers = self._get_headers()
 
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-
             data = response.json()
 
             urn = data.get("urn", None)
@@ -113,7 +111,6 @@ class CMSClient:
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-
             data = response.json()
 
             if len(data) > 0:
@@ -154,14 +151,12 @@ class CMSClient:
             include_offences: bool = True,
         ) -> list | None:
         """Get defendants for a case ID."""
-
         url = f"{self.base_url}/cases/{case_id}/defendants"
         headers = self._get_headers()
         
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-
             defendants = response.json()
 
             if defendants:
@@ -235,7 +230,6 @@ class CMSClient:
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-
             documents = response.json()
             logger.info(f"Found {len(documents)} documents")
 
@@ -249,7 +243,6 @@ class CMSClient:
         """Download a document directly from the API."""
         url = f"{self.base_url}/cases/{case_id}/documents/{document_id}/versions/{version_id}"
         headers = self._get_headers()
-
         response = requests.get(url, headers=headers, stream=True)
         response.raise_for_status()
         return response
@@ -303,3 +296,59 @@ class CMSClient:
                 continue
 
         return mg3_components
+
+    def get_case(self, case_id: int) -> dict | None:
+        """Get all available information for a given case ID."""
+        url = f"{self.base_url}/cases/{case_id}"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Failed to get case data: {e}")
+            return response.json() if response is not None else None
+
+    def get_prechargedec(self, case_id: int) -> dict | None:
+        """Get the precharge decision for a given case ID."""
+        url = f"{self.base_url}/cases/{case_id}/prechargedec"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Failed to get prechargedec: {e}")
+            return response.json() if response is not None else None
+
+    def get_pcd_reviews_outcomes(self, case_id: int) -> dict | None:
+        """Get the PCD reviews outcomes for a given case ID."""
+        url = f"{self.base_url}/cases/{case_id}/pcd-reviews/outcomes"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Failed to get PCD reviews outcomes: {e}")
+            return response.json() if response is not None else None
+        
+    def get_pcd_review_status(self, case_id: int) -> dict | None:
+        """Get the PCD review status for a given case ID."""
+        url = f"{self.base_url}/cases/{case_id}/pcd-review/status"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Failed to get PCD review status: {e}")
+            return response.json() if response is not None else None
