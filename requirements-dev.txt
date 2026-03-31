@@ -4,9 +4,3 @@
 pytest-cov
 pytest
 pytest-asyncio
-
-# bias report
-pandas
-scipy
-reportlab
-openpyxl
