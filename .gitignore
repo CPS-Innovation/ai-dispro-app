@@ -53,3 +53,7 @@ logs/
 *.csv
 
 .deployment/
+
+#
+src/bias-report/data/
+src/bias-report/outputs/
