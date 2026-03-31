@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Local dev / secrets
+local.settings.json
+.env
+env.json
+*.json.bak
+
+# Tests & coverage
+tests/
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Temp / scratch
+.tmp/
+
+# IDE
+.vscode/
+.idea/

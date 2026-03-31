@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Integer
+from sqlalchemy import DateTime, ForeignKey, String, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -26,7 +26,8 @@ class Document(Base):
         Integer, ForeignKey(f"{_settings.storage.table_name_cases}.id"), nullable=False, index=True
     )
 
-    original_file_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    presentation_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    original_file_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     cms_doc_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     doc_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     file_extension: Mapped[str | None] = mapped_column(String(50), nullable=True)

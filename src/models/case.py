@@ -1,7 +1,7 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, String, Integer
+from sqlalchemy import Boolean, DateTime, String, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class Case(Base):
     area_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     unit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     unit_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    registration_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    registration_date: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships

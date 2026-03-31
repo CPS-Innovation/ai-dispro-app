@@ -8,11 +8,11 @@ from src.api import (
     ingestion as ingestion_handler,
     analysis as analysis_handler,
     workflow as workflow_handler,
-    setup as setup_handler,
+    # setup as setup_handler,
 )
 
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
 
 @app.function_name(name="ping")
@@ -97,28 +97,30 @@ async def analysis(req: func.HttpRequest) -> func.HttpResponse:
             status_code=400
         )
 
-    section_id = req_body.get("section_id", None)
+    section_ids = req_body.get("section_ids", None)
+    version_ids = req_body.get("version_ids", None)
     task_ids = req_body.get("task_ids", None)
     correlation_id = req_body.get("correlation_id", None)
 
-    if section_id is None:
+    if section_ids is None and version_ids is None:
         return func.HttpResponse(
             json.dumps({
                 "status": "error",
-                "message": "Missing required parameters, section_id is required",
+                "message": "Missing required parameters, section_ids or version_ids is required",
             }),
             status_code=400
         )
 
-    response = await analysis_handler(
-        section_id=section_id,
+    results = await analysis_handler(
+        section_ids=section_ids,
         task_ids=task_ids,
+        version_ids=version_ids,
         correlation_id=correlation_id,
     )
 
     return func.HttpResponse(
-        json.dumps(response),
-        status_code=200 if response.get("status") == "success" else 500
+        json.dumps(results),
+        status_code=200 if len(results) > 0 else 500
     )
 
 
@@ -155,33 +157,33 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
         task_ids=task_ids,
         correlation_id=correlation_id,
     )
-
+    
     return func.HttpResponse(
         json.dumps(response),
         status_code=200 if response.get("status") == "success" else 400
     )
 
 
-@app.function_name(name="setup")
-@app.route(route="setup", methods=[func.HttpMethod.POST])
-async def setup(req: func.HttpRequest) -> func.HttpResponse:
-    """Setup trigger."""
-    logger.info("HTTP trigger: setup")
+# @app.function_name(name="setup")
+# @app.route(route="setup", methods=[func.HttpMethod.POST])
+# async def setup(req: func.HttpRequest) -> func.HttpResponse:
+#     """Setup trigger."""
+#     logger.info("HTTP trigger: setup")
 
-    try:
-        req_body = req.get_json()
-    except ValueError:
-        return func.HttpResponse(
-            json.dumps({"status": "error", "message": "Invalid JSON body"}),
-            status_code=400
-        )
+#     try:
+#         req_body = req.get_json()
+#     except ValueError:
+#         return func.HttpResponse(
+#             json.dumps({"status": "error", "message": "Invalid JSON body"}),
+#             status_code=400
+#         )
 
-    response = await setup_handler(
-        views=req_body.get("views", None),
-        prompt_templates=req_body.get("prompt_templates", None),
-    )
+#     response = await setup_handler(
+#         views=req_body.get("views", None),
+#         prompt_templates=req_body.get("prompt_templates", None),
+#     )
 
-    return func.HttpResponse(
-        json.dumps(response),
-        status_code=200 if response.get("status") == "success" else 500
-    )
+#     return func.HttpResponse(
+#         json.dumps(response),
+#         status_code=200 if response.get("status") == "success" else 500
+#     )

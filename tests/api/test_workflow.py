@@ -11,11 +11,11 @@ class TestWorkflowEndpoint:
 
     @pytest.mark.asyncio
     @pytest.mark.unit
-    async def test_workflow_success_single_section(self):
+    async def test_workflow_single_section(self):
         """Test successful workflow with single section."""
         mock_ingestion_result = {
             "status": "success",
-            "section_ids": [1],
+            "version_ids": [1],
             "experiment_id": "exp-123",
             "correlation_id": None,
             "error": None,
@@ -26,18 +26,18 @@ class TestWorkflowEndpoint:
         mock_ingestion.success = True
         mock_ingestion.get.side_effect = lambda key, default=None: mock_ingestion_result.get(key, default)
 
-        mock_analysis_result = {
+        mock_analysis_results = [{
             "status": "success",
             "experiment_id": "exp-123",
             "correlation_id": None,
             "section_ids": ["section-1"],
-            "analysis_job_id": "job-1",
+            "analysis_results": [],
             "tasks": [],
             "success": True,
-        }
+        }]
         mock_analysis = MagicMock()
         mock_analysis.success = True
-        mock_analysis.get.side_effect = lambda key, default=None: mock_analysis_result.get(key, default)
+        mock_analysis.get.side_effect = lambda key, default=None: mock_analysis_results[0].get(key, default)
 
         with patch("src.api.workflow.ingestion", new_callable=AsyncMock, return_value=mock_ingestion) as mock_ing, \
              patch("src.api.workflow.analysis", new_callable=AsyncMock, return_value=mock_analysis):
@@ -54,13 +54,10 @@ class TestWorkflowEndpoint:
             correlation_id=None,
         )
 
-        expected_keys = {"status", "experiment_id", "section_ids", "analysis_job_ids", "correlation_id"}
+        expected_keys = {"trigger_type", "value", "experiment_id", "correlation_id", "ingestion", "analysis_results"}
         assert set(result.keys()) == expected_keys
 
-        assert result["status"] == "success"
         assert result["experiment_id"] == "exp-123"
-        assert len(result["section_ids"]) == 1
-        assert len(result["analysis_job_ids"]) == 1
 
 
 class TestWorkflowIntegration:
@@ -79,21 +76,18 @@ class TestWorkflowIntegration:
             correlation_id="TST-CORR-API-Workflow-BLOB_NAME",
         )
 
-        assert result["status"] == "success"
-        assert len(result["section_ids"]) > 0
-        assert len(result["analysis_job_ids"]) > 0
+        assert len(result["ingestion"]["version_ids"]) > 0
+        assert len(result["analysis_results"]["analysis"]) > 0
 
 
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_workflow_error(self):
-        result = await workflow(
-            trigger_type="urn",
-            value='invalid',
-            experiment_id="TST-EXP-API-Workflow-BLOB_NAME",
-            task_ids=['theme1-appropriateness'],
-            correlation_id="TST-CORR-API-Workflow-BLOB_NAME",
-        )
-
-        assert result["status"] == "error"
-        assert len(result["error"]) > 0
+        with pytest.raises(Exception):
+            await workflow(
+                trigger_type="urn",
+                value='invalid',
+                experiment_id="TST-EXP-API-Workflow-BLOB_NAME",
+                task_ids=['theme1-appropriateness'],
+                correlation_id="TST-CORR-API-Workflow-BLOB_NAME",
+            )

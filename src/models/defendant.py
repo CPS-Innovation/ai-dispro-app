@@ -29,11 +29,13 @@ class Defendant(Base):
     )
 
     dob: Mapped[date | None] = mapped_column(Date, nullable=True)
+    list_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     youth: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    ethnicity: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    pcd_case_consultation_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    gender: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ethnicity: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pcd_case_consultation_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     pcd_review_decision: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pcd_principal_offence_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
     # Relationships

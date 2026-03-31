@@ -24,9 +24,13 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
         if not records:
             return None
         
-        # Return the record with the highest version number
-        return max(records, key=lambda record: record.version)
+        # Return the record with the highest version number and then by highest ID as a tiebreaker
+        return max(records, key=lambda record: (record.version, record.id))
     
+    def upsert(self, **kwargs):
+        """Upsert a prompt template based on unique fields."""
+        raise NotImplementedError("Use upsert_by with specific unique fields instead of upsert")
+
     def upsert_by(
         self,
         template: str,
@@ -34,6 +38,7 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
         pattern: str,
         agent: str,
         version: float,
+        linguistic_standard: str | None = None,
     ) -> PromptTemplate:
         """Upsert a prompt template by its unique fields."""
         prompt_templates = self.get_by(
@@ -47,7 +52,11 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
                 raise ValueError("Multiple prompt templates found with the same unique fields")
             existing = prompt_templates[0]
             logger.info(f"Existing prompt template found with ID {existing.id}, updating it")
-            self.update(id_value=existing.id, template=template)
+            self.update(
+                id_value=existing.id,
+                template=template,
+                linguistic_standard=linguistic_standard,
+            )
             return existing
 
         logger.info("No existing prompt template found, creating a new one")
@@ -57,4 +66,5 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
             agent=agent,
             version=version or 0.0,
             template=template,
+            linguistic_standard=linguistic_standard,
         )

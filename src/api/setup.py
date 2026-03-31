@@ -76,9 +76,17 @@ async def setup(
             prompt_repo = PromptTemplateRepository(session)
             for idx, pt in enumerate(prompt_templates):
                 try:
-                    pt_obj: PromptTemplate = prompt_repo.upsert(**pt)
+                    pt_id = pt.get('id', None)
+                    if pt_id is not None and prompt_repo.get_by_id(pt_id):
+                        logger.info(f"Existing prompt template found with ID {pt_id}, updating it")
+                        prompt_repo.update(id_value=pt_id, **pt)
+                        session.commit()
+                        response['prompt_templates']['upserted'].append(pt_id)
+                        continue
+   
+                    logger.warning(f"No existing prompt template found with ID {pt_id}, creating a new one")
+                    pt_obj = prompt_repo.create(**pt)
                     session.commit()
-                    logger.info(f"Upserted prompt template {idx}: {pt_obj.id}")
                     response['prompt_templates']['upserted'].append(pt_obj.id)
                 except Exception as e:
                     session.rollback()

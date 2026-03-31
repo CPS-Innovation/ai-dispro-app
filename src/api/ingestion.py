@@ -10,8 +10,8 @@ dotenv.load_dotenv()
 
 
 async def ingestion(
-    trigger_type: Literal[TriggerType.BLOB_NAME, TriggerType.FILEPATH, TriggerType.URN, TriggerType.URN_LIST],
-    value: str | list[str],
+    trigger_type: Literal[TriggerType.BLOB_NAME, TriggerType.FILEPATH, TriggerType.URN],
+    value: str,
     experiment_id: str | None = None,
     correlation_id: str | None = None,
 ):
@@ -22,7 +22,7 @@ async def ingestion(
     except ValueError:
         return {
             "status": "error",
-            "section_ids": [],
+            "version_ids": [],
             "experiment_id": experiment_id,
             "correlation_id": correlation_id,
             "error": f"Invalid trigger_type: {trigger_type}",
@@ -48,7 +48,7 @@ async def ingestion(
 
         return {
             "status": "success" if result.success else "error",
-            "section_ids": result.section_ids,
+            "version_ids": result.version_ids,
             "experiment_id": experiment_id,
             "correlation_id": correlation_id,
             "error": result.error,

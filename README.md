@@ -1,8 +1,12 @@
-# CPS AI Dispro Backend
+# CPS AI Dispro
 
 ## Overview
 
-This is the backend app for document processing and AI analysis.
+This application implements an agentic workflow for document processing and AI-driven analysis. By leveraging AI  agents that collaborate through structured pipelines, the system handles complex case document analysis at scale. 
+
+The architecture incorporates a AI technique inspired by  [Generative Adversarial Networks (GANs)](https://en.wikipedia.org/wiki/Generative_adversarial_network), enabling robust language pattern recognition and adversarial validation of analytical outputs. The agentic workflow orchestrates multiple specialized AI agents — each responsible for distinct analysis tasks — ensuring quality control through multi-perspective evaluation and iterative refinement.
+
+Designed based on production requirements, this backend prioritizes reliability, scalability, and maintainability through containerized deployment, comprehensive error handling, and enterprise-grade infrastructure integration.
 
 ## Requirements
 
@@ -30,19 +34,15 @@ func --version
 
 ## 🔧 Deployment Steps
 
-### Navigate to the code source directory
 
 ```shell
+# Navigate to the code source directory
 cd path/to/back
-```
-
-### Create an environment file
-
-```shell
+# Create an environment file
 cp env.template .env
 ```
 
-Open the file in your preferred text editor and populate the values.
+Open the new .env file in your preferred text editor and populate the values.
 
 ### Evaluate dependencies
 
@@ -73,23 +73,8 @@ Tests under `tests` directory use SQLite in-memory database.
 # Run all tests
 pytest
 
-# Optionally use `-v` for verbose, `-vv` for very verbose, `-s` and standard output, and `--durations=#` to show the # slowest  calls/setups
-pytest -vv -s --durations=10
-
-# Run with coverage
-pytest --cov=src --cov-report=html
-
-# Run all local tests
-pytest tests/
-
-# Run specific test file
-pytest tests/test_models.py
-
-# Run specific test
-pytest tests/test_models.py::test_create_case -v
-
-# Run all integration tests marked with 'integration'
-pytest integration/ -v -m integration
+# Optionally use `-v` for verbose, `-vv` for very verbose, `-s` and standard output, with coverage, and `--durations=#` to show the # slowest  calls/setups
+pytest -vv -s --cov=src --cov-report=html --durations=10
 ```
 
 ## Local Deployment
@@ -103,7 +88,7 @@ func start --verbose
 
 ```shell
 # Select files to add to zip
-$files = Get-ChildItem -Path "." -Exclude ".venv","__pycache__",".github",".pytest_cache",".tmp",".vscode","htmlcov",".env",".coverage",".deployment"
+$files = Get-ChildItem -Path "." -Exclude ".venv","__pycache__",".github",".pytest_cache",".tmp",".vscode","htmlcov",".env",".coverage",".deployment","tests"
 # Create zipped file
 # if dir does not exist, create it
 if (-not (Test-Path -Path ".deployment")) {
@@ -141,7 +126,7 @@ expected response:
 * HTTP response code: `200 OK`
 * HTTP response content: `{"status": "success", "{service_name}": "connected ({service_specific_output})"}`
 
-`POST /ingest`
+`POST /workflow`
 
 request body for CMS as datasource
 ```json
@@ -162,17 +147,6 @@ request body for Azure Blob Storage as datasource
 ```
 
 
-`POST /analyse`
-
-request body
-```json
-{ 
-    "section_id": 141,
-    "task_ids": ["tst-theme-01"]
-}
-```
-
-
 ## Troubleshooting
 
 **Local tests fail?**
@@ -182,7 +156,6 @@ Ensure .env is populated.
 1. Verify Azure PostgreSQL is running
 2. Check firewall rules allow your IP
 3. Verify credentials are correct
-4. [Optionally] Test with psql: `psql -h your-server.postgres.database.azure.com -U pgadmin`
 
 ## Contributing
 

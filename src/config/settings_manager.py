@@ -123,7 +123,8 @@ class TestSettings(Settings):
     filepath: str = ""
     section_content: str = ""
     experiment_id: str = ""
-    section_id: str = ""
+    version_id: Optional[int] = None
+    section_id: Optional[int] = None
     theme: str = ""
     pattern: str = ""
 
@@ -290,6 +291,7 @@ class SettingsManager:
                 "TEST_FILEPATH": "filepath",
                 "TEST_SECTION_CONTENT": "section_content",
                 "TEST_EXPERIMENT_ID": "experiment_id",
+                "TEST_VERSION_ID": "version_id",
                 "TEST_SECTION_ID": "section_id",
                 "TEST_THEME": "theme",
                 "TEST_PATTERN": "pattern",
