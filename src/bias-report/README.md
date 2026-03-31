@@ -1,5 +1,3 @@
-Here you go — **fully formatted Markdown**, ready to copy and paste directly into your `README.md`:
-
 ***
 
 # 📝 Bias Report Orchestrator
