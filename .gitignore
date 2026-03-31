@@ -55,5 +55,5 @@ logs/
 .deployment/
 
 #
-src/bias-report/data/
-src/bias-report/outputs/
+bias-report/data/
+bias-report/outputs/
