@@ -87,7 +87,7 @@ class TestIngestionIntegration:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_ingestion_with_blob(self):
+    async def test_ingestion_with_blob(self, seed_test_blob):
         settings = SettingsManager.get_instance()
         result = await ingestion(
             trigger_type="blob_name",

@@ -23,6 +23,38 @@ def db_session():
         yield None
 
 
+@pytest.fixture(scope="session")
+def seed_test_blob():
+    """Seed the test document blob in the source container.
+
+    Blob-ingestion integration tests read ``settings.test.blob_name`` from the
+    source container. This uploads a minimal valid PDF there before the tests
+    run and removes it afterwards, so the suite does not depend on pre-existing
+    storage state. Skips when no test blob name is configured.
+    """
+    from src.config import SettingsManager
+    from src.services import get_blob_service_client, save_blob
+    from src.services.azure_docintel import minimal_pdf
+
+    settings = SettingsManager.get_instance()
+    blob_name = settings.test.blob_name
+    container = settings.storage.blob_container_name_source
+
+    if not blob_name:
+        pytest.skip("settings.test.blob_name is not configured")
+
+    save_blob(container_name=container, blob_name=blob_name, data=minimal_pdf())
+    try:
+        yield blob_name
+    finally:
+        # Best-effort cleanup so the seeded blob does not linger between runs.
+        try:
+            with get_blob_service_client() as client:
+                client.get_blob_client(container=container, blob=blob_name).delete_blob()
+        except Exception:
+            pass
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_logging():
     """Configure logging for tests."""

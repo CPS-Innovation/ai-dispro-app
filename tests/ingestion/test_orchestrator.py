@@ -132,7 +132,7 @@ class TestIngestionIntegration:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_ingest_blob(self, db_initialized, settings):
+    async def test_ingest_blob(self, db_initialized, settings, seed_test_blob):
         ingestion_orchestrator = IngestionOrchestrator()
         result = await ingestion_orchestrator.ingest(
             trigger_type=TriggerType.BLOB_NAME,

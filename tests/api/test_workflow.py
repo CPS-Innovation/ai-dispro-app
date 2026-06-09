@@ -65,7 +65,7 @@ class TestWorkflowIntegration:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_workflow_success(self):
+    async def test_workflow_success(self, seed_test_blob):
         from src.config.settings_manager import SettingsManager
         settings = SettingsManager.get_instance()
         result = await workflow(
