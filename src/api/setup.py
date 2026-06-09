@@ -12,7 +12,6 @@ from ..database import (
     verify_schema,
 )
 from ..repositories import PromptTemplateRepository
-from ..models import PromptTemplate
 
 
 dotenv.load_dotenv()
@@ -66,7 +65,7 @@ async def setup(
                 except Exception as e:
                     session.rollback()
                     logger.error(f"Error Upserting view {idx}: {e}")
-                    response['views']['errors'].append(f"View {idx}: {e}")
+                    response['views']['errors'].append(f"View {idx}")
 
     # Upload prompt templates if specified
     if prompt_templates is not None:
@@ -91,7 +90,7 @@ async def setup(
                 except Exception as e:
                     session.rollback()
                     logger.error(f"Error Upserting prompt template {idx}: {e}")
-                    response['prompt_templates']['errors'].append(pt.get('name', 'unknown') + ": " + str(e))
+                    response['prompt_templates']['errors'].append(pt.get('name', 'unknown'))
 
     return response
 

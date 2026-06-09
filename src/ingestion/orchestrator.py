@@ -69,7 +69,7 @@ class IngestionOrchestrator:
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Execute complete ingestion pipeline."""
-        logger.info(f"Starting ingestion: trigger_type={trigger_type}, value={value}, experiment_id={experiment_id}")
+        logger.info(f"Starting ingestion: trigger_type={trigger_type}, experiment_id={experiment_id}, correlation_id={self.correlation_id}")
         
         # Route to appropriate handler based on trigger type
         if trigger_type == TriggerType.URN:
@@ -98,7 +98,7 @@ class IngestionOrchestrator:
             experiment_id: str | None = None,
         ) -> IngestionResult:
         """Ingest from CMS using URN (complete CMS flow)."""
-        logger.info(f"Ingesting from URN {urn}")
+        logger.info("Ingesting from URN")
 
         # Get case id
         with self._log_step(
@@ -109,14 +109,14 @@ class IngestionOrchestrator:
         ):
             case_id = cms_client.get_case_id_from_urn(urn)
             if case_id is None:
-                logger.error(f"URN {urn}: No case found")
-                raise Exception(f"URN {urn}: No case found")
+                logger.error(f"{self.correlation_id}: No case found")
+                raise Exception(f"{self.correlation_id}: No case found")
             
         case_data = {
             "urn": urn,
             "id": case_id,  # external CMS ID used as pk
         }   
-        logger.debug(f"URN {urn} Case {case_id}: Case ID retrieved ")
+        logger.debug(f"{self.correlation_id} Case: Case ID retrieved ")
         
         # Get case summary
         with self._log_step(
@@ -127,11 +127,11 @@ class IngestionOrchestrator:
         ):
             case_summary = cms_client.get_case_summary(case_id)
             if case_summary is None:
-                logger.error(f"URN {urn} Case {case_id}: No case summary")
-                raise Exception(f"URN {urn} Case {case_id}: No case summary")   
+                logger.error(f"{self.correlation_id} Case: No case summary")
+                raise Exception(f"{self.correlation_id} Case: No case summary")   
         
         case_data.update(self._case_summary_to_dict(case_summary))
-        logger.debug(f"URN {urn} Case {case_id}: Case summary retrieved")
+        logger.debug(f"{self.correlation_id} Case: Case summary retrieved")
 
         # Get raw documents from CMS
         with self._log_step(
@@ -142,13 +142,13 @@ class IngestionOrchestrator:
         ):
             raw_documents_data = cms_client.list_case_documents(case_id=case_id)
             if raw_documents_data is None:
-                logger.warning(f"URN {urn} Case {case_id}: No document data")
-                raise Exception(f"URN {urn} Case {case_id}: No document data")
+                logger.warning(f"{self.correlation_id} Case: No document data")
+                raise Exception(f"{self.correlation_id} Case: No document data")
             
-        logger.debug(f"URN {urn} Case {case_id}: Number of documents: {len(raw_documents_data) if raw_documents_data else 0}")
+        logger.debug(f"{self.correlation_id} Case: Number of documents: {len(raw_documents_data) if raw_documents_data else 0}")
         selected_documents_data = []
         for idx, raw_doc_data in enumerate(raw_documents_data or []):
-            logger.debug(f"URN {urn} Case {case_id} Document {idx}: {raw_doc_data.get('presentationTitle')} {raw_doc_data.get('originalFileName')} ({raw_doc_data.get('cmsDocCategory')}:{raw_doc_data.get('type')})")
+            logger.debug(f"{self.correlation_id} Case: Document {idx}: {raw_doc_data.get('cmsDocCategory')}:{raw_doc_data.get('type')}")
             if not is_document_supported(raw_doc_data=raw_doc_data):
                 continue
             
@@ -175,7 +175,7 @@ class IngestionOrchestrator:
                 experiment_id=experiment_id,
             )
             if document_data is None:
-                logger.error(f"URN {urn} Case {case_id} Document {doc_data['id']} v{doc_data['version_id']}: Failed to retrieve document content. Skipping document.")
+                logger.error(f"{self.correlation_id} Case: Document {idx}: Failed to retrieve document content. Skipping document.")
                 continue
 
             doc_data["data"] = document_data
@@ -184,15 +184,15 @@ class IngestionOrchestrator:
             selected_documents_data.append(doc_data)
 
         if not selected_documents_data:
-            logger.warning(f"URN {urn} Case {case_id}: No document selected")
+            logger.warning(f"{self.correlation_id} Case: No document selected")
             return IngestionResult(
                 success=False,
-                error=f"URN {urn} Case {case_id}: No document selected",
+                error=f"{self.correlation_id} Case: No document selected",
             )
         
         logger.debug(
-            f"URN {urn} Case {case_id}: Selected documents for ingestion ({len(selected_documents_data)} in total): " +
-            '; '.join([f"{doc['id']} v{doc['version_id']} ({doc['original_file_name']}, {doc['cms_doc_category']}, {doc['doc_type']}, {doc['mime_type']})" for doc in selected_documents_data])
+            f"{self.correlation_id} Case: Selected documents for ingestion ({len(selected_documents_data)} in total): " +
+            '; '.join([f"{doc['id']} v{doc['version_id']} ({doc['cms_doc_category']}, {doc['doc_type']}, {doc['mime_type']})" for doc in selected_documents_data])
         )
 
         # Get defendants and charges from CMS
@@ -208,14 +208,14 @@ class IngestionOrchestrator:
                 include_offences=True,
             )
             if defendants_data is None:
-                logger.error(f"URN {urn} Case {case_id}: Failed to retrieve defendants data")
-                raise Exception(f"URN {urn} Case {case_id}: Failed to retrieve defendants data")
+                logger.error(f"{self.correlation_id} Case: Failed to retrieve defendants data")
+                raise Exception(f"{self.correlation_id} Case: Failed to retrieve defendants data")
         
-        logger.debug(f"URN {urn} Case {case_id}: Number of defendants: {len(defendants_data)}")
+        logger.debug(f"{self.correlation_id} Case: Number of defendants: {len(defendants_data)}")
         for def_idx, def_data in enumerate(defendants_data):
             charges = def_data.get("charges", [])
             offences = def_data.get("offences", [])
-            logger.debug(f"URN {urn} Case {case_id} Defendant {def_idx}: {len(charges)} charges and {len(offences)} offences")
+            logger.debug(f"{self.correlation_id} Case: Defendant {def_idx}: {len(charges)} charges and {len(offences)} offences")
         # Store case data and process documents
         result = await self._store_and_process_case(
             case_data,
@@ -329,7 +329,7 @@ class IngestionOrchestrator:
         )
         
         # Parse each document
-        for version in versions:
+        for v_idx, version in enumerate(versions):
             doc_result = await self._process_version(
                 version=version,
                 experiment_id=experiment_id,
@@ -338,7 +338,7 @@ class IngestionOrchestrator:
                 result.document_ids.extend(doc_result.document_ids)
                 result.version_ids.extend(doc_result.version_ids)
             else:
-                logger.warning(f"Document processing failed: doc_id={version.document_id}, error={doc_result.error}")
+                logger.warning(f"Document processing failed: v_idx={v_idx}, error={doc_result.error}")
         
         return result
 
