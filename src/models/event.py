@@ -1,10 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..config import SettingsManager
 from ..database.base import Base
+from .utcnow import _utcnow
 
 _settings = SettingsManager.get_instance()
 
@@ -26,7 +27,7 @@ class Event(Base):
     experiment_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     correlation_id: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
 
     def __repr__(self) -> str:
         return f"<Event(id='{self.id}')>"
