@@ -105,6 +105,7 @@ def test_validate_create_view_ddl(ddl, should_pass, db_session):
         # Should not raise an exception
         validate_create_view_ddl(ddl)
         db_session.execute(text('DROP VIEW IF EXISTS test_view;'))
+        db_session.commit()
     else:
         with pytest.raises(ValueError):
             validate_create_view_ddl(ddl)

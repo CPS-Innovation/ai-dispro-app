@@ -237,7 +237,7 @@ class IngestionOrchestrator:
         with get_session() as session:
             # Store minimal case
             case_repo = CaseRepository(session)
-            case: Case = case_repo.upsert(urn="01BL0000001") # Plaholder URN 
+            case: Case = case_repo.upsert(urn="01BL0000001") # Placeholder URN 
             
             # Store document reference
             doc_repo = DocumentRepository(session)
