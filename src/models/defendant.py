@@ -1,7 +1,7 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Integer, Boolean, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from ..config import SettingsManager
 from ..database.base import Base
+from .utcnow import _utcnow
 
 _settings = SettingsManager.get_instance()
 
@@ -36,7 +37,7 @@ class Defendant(Base):
     pcd_case_consultation_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     pcd_review_decision: Mapped[str | None] = mapped_column(Text, nullable=True)
     pcd_principal_offence_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
 
     # Relationships
     case: Mapped["Case"] = relationship(

@@ -8,6 +8,7 @@ from src.config import SettingsManager
 from src.database.migrations import verify_schema
 
 dotenv.load_dotenv()
+ERR_MSG = "connection failed"
 
 async def health(
         route: Literal['blob', 'postgres', 'llm', 'docintel', 'keyvault', 'cms'] | None = None,
@@ -47,7 +48,7 @@ async def health(
             return {"status": "success", "blob": f"connected ({len(containers)} containers)"}
         except Exception as e:
             logger.error(f"Blob connection failed: {e}")
-            return {"status": "error", "blob": "disconnected", "error": str(e)}
+            return {"status": "error", "blob": ERR_MSG}
 
     if route_normalised == "postgres":
         # Test database connection
@@ -65,7 +66,7 @@ async def health(
             return {"status": "success", "postgres": f"connected (verification {verification['status']}, {len(existing_tables)} tables)"}
         except Exception as e:
             logger.error(f"Database connection failed: {e}")
-            return {"status": "error", "postgres": "disconnected", "error": str(e)}
+            return {"status": "error", "postgres": ERR_MSG}
 
     if route_normalised == "llm":
         # Test LLM connection
@@ -82,7 +83,7 @@ async def health(
             return {"status": "success", "llm": f"connected ('{answer}')"}
         except Exception as e:
             logger.error(f"LLM connection failed: {e}")
-            return {"status": "error", "llm": "disconnected", "error": str(e)}
+            return {"status": "error", "llm": ERR_MSG}
 
     if route_normalised == "docintel":
         # Test Document Intelligence connection
@@ -100,11 +101,11 @@ async def health(
                 content_type="application/octet-stream",
             )
             result = poller.result()
-            logger.info(f"Document Intelligence connection successful, result: {result}")
+            logger.info(f"Document Intelligence connection successful (pages: {len(result.pages)})")
             return {"status": "success", "docintel": f"connected (pages: {len(result.pages)})"}
         except Exception as e:
             logger.error(f"Document Intelligence connection failed: {e}")
-            return {"status": "error", "docintel": "disconnected", "error": str(e)}
+            return {"status": "error", "docintel": ERR_MSG}
     
     if route_normalised == "keyvault":
         # Test Key Vault connection
@@ -112,11 +113,11 @@ async def health(
             from src.services import get_secret
             secret_name = settings.cms.username_secret_name
             get_secret(secret_name)
-            logger.info(f"Key Vault connection successful, retrieved secret: {secret_name}")
-            return {"status": "success", "keyvault": f"connected (secret name: {secret_name})"}
+            logger.info("Key Vault connection successful, retrieved secret")
+            return {"status": "success", "keyvault": "connected"}
         except Exception as e:
             logger.error(f"Key Vault connection failed: {e}")
-            return {"status": "error", "keyvault": "disconnected", "error": str(e)}
+            return {"status": "error", "keyvault": ERR_MSG}
     
     if route_normalised == "cms":
         # Test CMS connection
@@ -125,11 +126,10 @@ async def health(
             client = CMSClient()
             if not client.authenticate():
                 logger.error("Failed to authenticate.")
-                return {"status": "error", "cms": "disconnected", "error": "authentication failed"}
+                return {"status": "error", "cms": ERR_MSG, "error": "authentication failed"}
             return {"status": "success", "cms": "connected (successful authentication)"}
         except Exception as e:
             logger.error(f"CMS connection failed: {e}")
-            return {"status": "error", "cms": "disconnected", "error": str(e)}
-
+            return {"status": "error", "cms": ERR_MSG, "error": str(e)}
     logger.warning(f"Unknown health check route: {route_normalised}")
     return {"status": "error", "error": f"Unknown route: {route_normalised}"}

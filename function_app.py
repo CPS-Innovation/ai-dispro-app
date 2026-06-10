@@ -164,7 +164,7 @@ async def workflow(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
-# @app.function_name(name="setup")
+# @app.function_name(name="setup", auth_level=func.AuthLevel.ADMIN)
 # @app.route(route="setup", methods=[func.HttpMethod.POST])
 # async def setup(req: func.HttpRequest) -> func.HttpResponse:
 #     """Setup trigger."""

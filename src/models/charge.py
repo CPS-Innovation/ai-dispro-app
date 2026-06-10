@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, Integer
@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 from ..config import SettingsManager
 from ..database.base import Base
+from .utcnow import _utcnow
 
 _settings = SettingsManager.get_instance()
 
@@ -30,8 +31,8 @@ class Charge(Base):
     from_date: Mapped[str | None] = mapped_column(Text, nullable=True)
     to_date: Mapped[str | None] = mapped_column(Text, nullable=True)
     latest_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
-
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
+    
     # Relationships
     defendant: Mapped["Defendant"] = relationship(
         "Defendant",

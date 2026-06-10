@@ -8,7 +8,7 @@ from .azure_identity import get_credentials
 def get_secret(secret_name: str, settings: SettingsManager | None = None) -> str:
     """Retrieve a secret from Azure Key Vault."""
     azure = (settings or SettingsManager.get_instance()).azure
-    logger.debug("Retrieving secret from Key Vault: {}", secret_name)
+    logger.debug("Retrieving secret from Key Vault")
     try:
         credential = get_credentials()
         secret_client = SecretClient(
@@ -16,10 +16,9 @@ def get_secret(secret_name: str, settings: SettingsManager | None = None) -> str
             credential=credential,
         )
         secret_value = secret_client.get_secret(secret_name).value
-        logger.debug("Successfully retrieved secret: {}", secret_name)
         return secret_value
     except ResourceNotFoundError:
-        logger.error("Secret not found in Key Vault: {}", secret_name)
+        logger.error("Secret not found in Key Vault")
         raise
     except ClientAuthenticationError as e:
         logger.error("Authentication failed when accessing Key Vault: {}", str(e))

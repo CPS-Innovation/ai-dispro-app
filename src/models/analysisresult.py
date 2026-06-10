@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, Integer
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 from ..config import SettingsManager
 from ..database.base import Base
+from .utcnow import _utcnow
 
 _settings = SettingsManager.get_instance()
 
@@ -47,7 +48,7 @@ class AnalysisResult(Base):
     reviewer_final_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewer_confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     reviewer_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
 
     # Relationships
     analysis_job: Mapped["AnalysisJob"] = relationship(
