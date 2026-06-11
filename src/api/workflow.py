@@ -24,7 +24,7 @@ async def workflow(
     )
 
     if ingestion_result.get('status') != "success":
-        return {"ingestion": ingestion_result}
+        return {"status": "error", "ingestion": ingestion_result}
 
     version_ids = ingestion_result.get("version_ids", [])
 
@@ -37,6 +37,7 @@ async def workflow(
     )
 
     return {
+        "status": "success",
         "trigger_type": trigger_type,
         "value": value,
         "experiment_id": experiment_id,
