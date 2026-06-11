@@ -54,9 +54,10 @@ class TestWorkflowEndpoint:
             correlation_id=None,
         )
 
-        expected_keys = {"trigger_type", "value", "experiment_id", "correlation_id", "ingestion", "analysis_results"}
+        expected_keys = {"status", "trigger_type", "value", "experiment_id", "correlation_id", "ingestion", "analysis_results"}
         assert set(result.keys()) == expected_keys
 
+        assert result["status"] == "success"
         assert result["experiment_id"] == "exp-123"
 
 

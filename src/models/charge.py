@@ -32,7 +32,7 @@ class Charge(Base):
     to_date: Mapped[str | None] = mapped_column(Text, nullable=True)
     latest_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
-    
+
     # Relationships
     defendant: Mapped["Defendant"] = relationship(
         "Defendant",

@@ -29,15 +29,15 @@ def is_document_supported(
     elif original_file_name is not None and re.search(r'M\s*G\s*3(?!\s*A)\b', original_file_name, re.IGNORECASE):
         ans = True  # accept by name
     elif raw_doc_data["cmsDocCategory"] not in SUPPORTED_CMS_DOC_CATEGORIES:
-        logger.debug(f"Skip {raw_doc_data['id']} '{presentation_title}'. Reason: unsupported category {raw_doc_data['cmsDocCategory']}")
+        logger.debug(f"Skip {raw_doc_data['id']}. Reason: unsupported category {raw_doc_data['cmsDocCategory']}")
         ans = False 
     elif raw_doc_data["type"] not in SUPPORTED_DOC_TYPES:
-        logger.debug(f"Skip {raw_doc_data['id']} '{presentation_title}'. Reason: unsupported type {raw_doc_data.get('type')}")
+        logger.debug(f"Skip {raw_doc_data['id']}. Reason: unsupported type {raw_doc_data.get('type')}")
         ans = False
     
     # only PDF and DOCX are supported
     if raw_doc_data["mimeType"] not in SUPPORTED_MIME_TYPES:
-        logger.debug(f"Skip {raw_doc_data['id']} '{presentation_title}'. Reason: unsupported mime type {raw_doc_data.get('mimeType')}")
+        logger.debug(f"Skip {raw_doc_data['id']}. Reason: unsupported mime type {raw_doc_data.get('mimeType')}")
         ans = False
     
     return ans
