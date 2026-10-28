@@ -33,7 +33,7 @@ from ..database import get_session
 from ..services import load_blob, save_blob, get_llm_client
 from .utils import is_valid_subset
 from .models import ExtractionResult
-
+from .utils import deduplicate_case_outlines
 
 class AnalysisOrchestrator:
     """Orchestrator for managing analysis workflows."""
@@ -495,6 +495,12 @@ class AnalysisOrchestrator:
                 logger.warning("No sections extracted from document")
                 return []
             logger.debug(f"Extracted {len(narratives)} sections")
+            before_count = len(narratives)
+            narratives = deduplicate_case_outlines(narratives)
+            logger.info(
+                f"Case outlines after deduplication: {before_count} -> {len(narratives)}"
+            )
+
             return narratives
 
         

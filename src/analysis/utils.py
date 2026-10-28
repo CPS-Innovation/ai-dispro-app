@@ -62,3 +62,38 @@ def is_valid_subset(text: str, subset: str) -> bool:
         logger.info("Subset similarity too low (%.2f%%) for: %s", best_ratio * 100, subset_clean)
 
     return is_valid
+
+def normalise_narrative(narrative: str) -> str:
+    """Remove redaction differences before comparison."""
+    narrative = re.sub(r"\[REDACTED\]", "", narrative, flags=re.IGNORECASE)
+    narrative = re.sub(r"\s+", " ", narrative)
+
+    return narrative.strip().lower()
+
+def deduplicate_case_outlines(
+    narratives: list[str],
+    threshold: float = 0.90,
+) -> list[str]:
+    unique_narratives = []
+
+    for narrative in narratives:
+        is_duplicate = False
+
+        for existing in unique_narratives:
+            similarity = SequenceMatcher(
+                None,
+                normalise_narrative(narrative),
+                normalise_narrative(existing),
+            ).ratio()
+
+            if similarity >= threshold:
+                logger.info(
+                    f"Skipping duplicate case outline (similarity={similarity:.3f})"
+                )
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            unique_narratives.append(narrative)
+
+    return unique_narratives
