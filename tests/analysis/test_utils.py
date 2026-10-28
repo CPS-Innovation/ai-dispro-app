@@ -82,3 +82,45 @@ def test_deduplicate_case_outlines_removes_exact_duplicates():
         "Same outline",
         "Different outline",
     ]
+
+
+@pytest.mark.unit
+def test_invalid_near_duplicate_fails_subset_validation():
+    source = "The defendant pushed the victim."
+    extracted = "Allegedly, the defendant pushed the victim."
+
+    result = is_valid_subset(source, extracted)
+
+    assert result is False
+
+
+@pytest.mark.unit
+def test_valid_near_duplicate_passes_subset_validation():
+    source = "The defendant pushed the victim."
+    extracted = "The defendant pushed the victim."
+
+    result = is_valid_subset(source, extracted)
+
+    assert result is True
+
+
+@pytest.mark.unit
+def test_deduplication_does_not_discard_valid_outline():
+    source = "The defendant pushed the victim."
+
+    narratives = [
+        "Allegedly, the defendant pushed the victim.",
+        "The defendant pushed the victim.",
+    ]
+
+    deduplicated = deduplicate_case_outlines(narratives)
+
+    valid_narratives = [
+        narrative
+        for narrative in deduplicated
+        if is_valid_subset(source, narrative)
+    ]
+
+    assert valid_narratives == [
+        "The defendant pushed the victim."
+    ]

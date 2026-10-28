@@ -101,11 +101,29 @@ def test_reviewer_flip_rate(experiment_id, theme, pattern, save_results):
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "is_youth, categories, expected_count",
+    "is_youth, categories, expected_count, expected_categories",
     [
-        (False, ["Adultification"], 0),
-        (True, ["Adultification"], 1),
-        (False, ["VictimBlaming"], 1),
+        (False, ["Adultification"], 0, []),
+        (True, ["Adultification"], 1, ["Adultification"]),
+        (False, ["VictimBlaming"], 1, ["VictimBlaming"]),
+        (
+            False,
+            ["Adultification", "VictimBlaming"],
+            1,
+            ["VictimBlaming"],
+        ),
+        (
+            False,
+            ["VictimBlaming", "Adultification"],
+            1,
+            ["VictimBlaming"],
+        ),
+        (
+            True,
+            ["Adultification", "VictimBlaming"],
+            1,
+            ["Adultification", "VictimBlaming"],
+        ),
     ],
 )
 def test_critic_filters_adultification(
@@ -113,8 +131,8 @@ def test_critic_filters_adultification(
     is_youth,
     categories,
     expected_count,
+    expected_categories,
 ):
-    # Setup
     case_repo = CaseRepository(mock_db_session)
     case = case_repo.create(urn="01TS1234567", finalised=False)
 
@@ -128,7 +146,10 @@ def test_critic_filters_adultification(
     version = version_repo.create(document_id=document.id)
 
     section_repo = SectionRepository(mock_db_session)
-    section = section_repo.create(version_id=version.id, document_id=document.id)
+    section = section_repo.create(
+        version_id=version.id,
+        document_id=document.id,
+    )
 
     analysis_job_repo = AnalysisJobRepository(mock_db_session)
     analysis_job = analysis_job_repo.create(section_id=section.id)
@@ -190,3 +211,88 @@ def test_critic_filters_adultification(
     )
 
     assert len(result["references"]) == expected_count
+
+    if expected_count:
+        assert result["references"][0]["categories"] == expected_categories
+
+@pytest.mark.integration
+def test_critic_handles_case_with_no_defendant(mock_db_session):
+    case_repo = CaseRepository(mock_db_session)
+    case = case_repo.create(urn="01TS1234567", finalised=False)
+
+    doc_repo = DocumentRepository(mock_db_session)
+    document = doc_repo.create(
+        case_id=case.id,
+        original_file_name="test.pdf",
+    )
+
+    version_repo = VersionRepository(mock_db_session)
+    version = version_repo.create(document_id=document.id)
+
+    section_repo = SectionRepository(mock_db_session)
+    section = section_repo.create(
+        version_id=version.id,
+        document_id=document.id,
+    )
+
+    analysis_job_repo = AnalysisJobRepository(mock_db_session)
+    analysis_job = analysis_job_repo.create(section_id=section.id)
+
+    # Case deliberately has no defendants
+    case.defendants = []
+    document.case = case
+    version.document = document
+    section.version = version
+    analysis_job.section = section
+
+    mock_db_session.get.return_value = analysis_job
+    mock_db_session.commit()
+
+    worker = LangGraphWorker.__new__(LangGraphWorker)
+    worker.theme_id = "combined"
+    worker.pattern_id = "test"
+    worker.critic_prompt_template = MagicMock()
+    worker.critic_prompt_template.template = "{{ contextText }}"
+
+    class _SessionCtx:
+        """Simple context manager to return the provided session."""
+
+        def __init__(self, session):
+            self.session = session
+
+        def __enter__(self):
+            return self.session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    critic_response = {
+        "analysis_results": [
+            {
+                "content": "test",
+                "categories": ["Adultification"],
+                "justification": "test",
+                "self_confidence": "0.9",
+            }
+        ]
+    }
+
+    state = {
+        "text_": "test",
+        "pattern_": "test",
+        "analysis_job_id": analysis_job.id,
+        "references": [],
+        "results": [],
+    }
+
+    with patch("src.analysis.workers.langgraph_worker.get_session", return_value=_SessionCtx(mock_db_session)), \
+         patch.object(worker, "_call_model", return_value=json.dumps(critic_response)):
+        result = worker._critic(state)
+
+    mock_db_session.get.assert_called_once_with(
+        AnalysisJob,
+        analysis_job.id,
+    )
+
+    assert len(result["references"]) == 1
+    assert result["references"][0]["categories"] == ["Adultification"]

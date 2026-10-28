@@ -266,15 +266,16 @@ class LangGraphWorker(AnalysisWorker):
         with get_session() as session:
             analysis_job = session.get(AnalysisJob, analysis_job_id)
 
-            is_youth = (
+            defendants = (
                 analysis_job
                 .section
                 .version
                 .document
                 .case
-                .defendants[0]
-                .youth
+                .defendants
             )
+
+            is_youth = defendants[0].youth if defendants else None
 
         prompt_template = Environment(autoescape=True).from_string(
             source=self.critic_prompt_template.template
@@ -421,15 +422,26 @@ class LangGraphWorker(AnalysisWorker):
         filtered_references = []
 
         for reference in references:
-            if (
-                theme_id == "combined"
-                and "Adultification" in reference.get("categories", [])
-                and is_youth is False
-            ):
-                logger.info(
-                    "Removing Adultification finding for non-youth defendant"
-                )
-                continue
+            if theme_id == "combined" and is_youth is False:
+                categories = reference.get("categories", [])
+
+                if "Adultification" in categories:
+                    remaining_categories = [
+                        category
+                        for category in categories
+                        if category != "Adultification"
+                    ]
+
+                    if not remaining_categories:
+                        logger.info(
+                            "Removing Adultification finding for non-youth defendant"
+                        )
+                        continue
+
+                    reference = {
+                        **reference,
+                        "categories": remaining_categories,
+                    }
 
             filtered_references.append(reference)
 
