@@ -2,13 +2,24 @@ import pytest
 
 from src.analysis.utils import deduplicate_case_outlines, is_valid_subset
 
+
+VALID_OUTLINE = (
+    "The defendant was arrested and later interviewed "
+    "at the police station."
+)
+
+INVALID_OUTLINE = (
+    "Allegedly, The defendant was arrested and later interviewed "
+    "at the police station."
+)
+
+
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "source, extracted, expected",
     [
         (
-            "The defendant was arrested and later interviewed "
-            "at the police station.",
+            VALID_OUTLINE,
             "The defendant was arrested",
             True,
         ),
@@ -31,8 +42,7 @@ from src.analysis.utils import deduplicate_case_outlines, is_valid_subset
             True,
         ),
         (
-            "The defendant was arrested and later interviewed "
-            "at the police station.",
+            VALID_OUTLINE,
             "...The defendant was arrested and later interviewed "
             "at the police station.",
             True,
@@ -86,41 +96,31 @@ def test_deduplicate_case_outlines_removes_exact_duplicates():
 
 @pytest.mark.unit
 def test_invalid_near_duplicate_fails_subset_validation():
-    source = "The defendant pushed the victim."
-    extracted = "Allegedly, the defendant pushed the victim."
-
-    result = is_valid_subset(source, extracted)
+    result = is_valid_subset(VALID_OUTLINE, INVALID_OUTLINE)
 
     assert result is False
 
 
 @pytest.mark.unit
 def test_valid_near_duplicate_passes_subset_validation():
-    source = "The defendant pushed the victim."
-    extracted = "The defendant pushed the victim."
-
-    result = is_valid_subset(source, extracted)
+    result = is_valid_subset(VALID_OUTLINE, VALID_OUTLINE)
 
     assert result is True
 
 
 @pytest.mark.unit
-def test_deduplication_does_not_discard_valid_outline():
-    source = "The defendant pushed the victim."
-
+def test_validation_before_deduplication_preserves_valid_outline():
     narratives = [
-        "Allegedly, the defendant pushed the victim.",
-        "The defendant pushed the victim.",
+        INVALID_OUTLINE,
+        VALID_OUTLINE,
     ]
-
-    deduplicated = deduplicate_case_outlines(narratives)
 
     valid_narratives = [
         narrative
-        for narrative in deduplicated
-        if is_valid_subset(source, narrative)
+        for narrative in narratives
+        if is_valid_subset(VALID_OUTLINE, narrative)
     ]
 
-    assert valid_narratives == [
-        "The defendant pushed the victim."
-    ]
+    deduplicated = deduplicate_case_outlines(valid_narratives)
+
+    assert deduplicated == [VALID_OUTLINE]
