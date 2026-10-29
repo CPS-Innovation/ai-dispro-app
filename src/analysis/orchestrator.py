@@ -33,7 +33,7 @@ from ..database import get_session
 from ..services import load_blob, save_blob, get_llm_client
 from .utils import is_valid_subset
 from .models import ExtractionResult
-
+from .utils import deduplicate_case_outlines
 
 class AnalysisOrchestrator:
     """Orchestrator for managing analysis workflows."""
@@ -496,8 +496,6 @@ class AnalysisOrchestrator:
                 return []
             logger.debug(f"Extracted {len(narratives)} sections")
             return narratives
-
-        
         # Convert to list of dicts and validate each
         try:
             extracted_sections = __extract(compiled_prompt, llm_client)
@@ -536,6 +534,24 @@ class AnalysisOrchestrator:
                 continue
             result.append({"content": content})
 
+        before_count = len(result)
+
+        valid_narratives = [
+            section["content"]
+            for section in result
+        ]
+
+        valid_narratives = deduplicate_case_outlines(valid_narratives)
+
+        logger.info(
+            f"Case outlines after deduplication: "
+            f"{before_count} -> {len(valid_narratives)}"
+        )
+
+        result = [
+            {"content": content}
+            for content in valid_narratives
+        ]
         return result
 
     def _redact_content(

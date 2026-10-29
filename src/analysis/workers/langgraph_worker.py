@@ -15,13 +15,14 @@ from ...config import SettingsManager
 from ...database import get_session
 from ...repositories import PromptTemplateRepository
 from ..base_worker import AnalysisWorker
-from ...models import AnalysisResult, PromptTemplate
+from ...models import AnalysisResult, PromptTemplate, AnalysisJob
 from ...services import get_token_provider
-
+from ..utils import is_valid_subset
 
 class State(TypedDict):
     text_: str
     pattern_: str
+    analysis_job_id: int
     references: Annotated[list, operator.add]
     results: Annotated[list, operator.add]
 
@@ -112,6 +113,7 @@ class LangGraphWorker(AnalysisWorker):
             initial_state: State = self._build_initial_state(
                 text=text,
                 pattern=self.pattern_id,
+                analysis_job_id=analysis_job_id,
             )
             graph: StateGraph = self._build_graph()
 
@@ -158,14 +160,16 @@ class LangGraphWorker(AnalysisWorker):
             raise
 
     def _build_initial_state(
-            self,
-            text: str,
-            pattern: str
-        ) -> State:
-        
+        self,
+        text: str,
+        pattern: str,
+        analysis_job_id: int,
+    ) -> State:
+
         return State(
             text_=text,
             pattern_=pattern,
+            analysis_job_id=analysis_job_id,
             references=[],
             results=[],
         )
@@ -256,6 +260,23 @@ class LangGraphWorker(AnalysisWorker):
     def _critic(self, state: State) -> dict:
         """Invoke the critic prompt to get references."""
         text = state["text_"]
+
+        analysis_job_id = state["analysis_job_id"]
+
+        with get_session() as session:
+            analysis_job = session.get(AnalysisJob, analysis_job_id)
+
+            defendants = (
+                analysis_job
+                .section
+                .version
+                .document
+                .case
+                .defendants
+            )
+
+            is_youth = defendants[0].youth if defendants else None
+
         prompt_template = Environment(autoescape=True).from_string(
             source=self.critic_prompt_template.template
         )
@@ -271,7 +292,19 @@ class LangGraphWorker(AnalysisWorker):
             {"hash_id": md5(i["content"].encode()).hexdigest(), **i}
             for i in critic_response_content_json["analysis_results"]
         ]
-        return {"references": critic_response_content_json_hashed}
+        valid_references = []
+
+        for reference in critic_response_content_json_hashed:
+            if is_valid_subset(text, reference["content"]):
+                valid_references.append(reference)
+
+        valid_references = self._filter_adultification(
+            valid_references,
+            is_youth,
+            self.theme_id,
+        )
+
+        return {"references": valid_references}
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def _is_witness(self, reference_state: ReferenceState) -> ReferenceState:
@@ -379,3 +412,37 @@ class LangGraphWorker(AnalysisWorker):
                 },
             ]
         }
+
+    @staticmethod
+    def _filter_adultification(
+        references: list[dict],
+        is_youth: bool | None,
+        theme_id: str,
+    ) -> list[dict]:
+        filtered_references = []
+
+        for reference in references:
+            if theme_id == "combined" and is_youth is False:
+                categories = reference.get("categories", [])
+
+                if "Adultification" in categories:
+                    remaining_categories = [
+                        category
+                        for category in categories
+                        if category != "Adultification"
+                    ]
+
+                    if not remaining_categories:
+                        logger.info(
+                            "Removing Adultification finding for non-youth defendant"
+                        )
+                        continue
+
+                    reference = {
+                        **reference,
+                        "categories": remaining_categories,
+                    }
+
+            filtered_references.append(reference)
+
+        return filtered_references
